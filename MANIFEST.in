@@ -1,0 +1,12 @@
+include LICENSE
+include README.rst
+recursive-include invoice/admin *
+recursive-include invoice/models *
+recursive-include invoice/urls *
+recursive-include invoice/views *
+recursive-include invoice/static *
+recursive-include invoice/templates *
+recursive-include invoice/management *
+recursive-include invoice/migrations *
+recursive-include invoice/reports *
+recursive-include invoice/settings *
