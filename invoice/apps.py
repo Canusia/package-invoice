@@ -4,11 +4,67 @@ class InvoiceConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'invoice'
 
-    CONFIGURATORS = []
-    REPORTS = []
+    CONFIGURATORS = [
+        {
+            'app': 'invoice',
+            'name': 'invoice',
+            'title': 'Invoice Settings',
+            'description': '-',
+            'categories': [
+                '4'
+            ]
+        },
+    ]
+
+    REPORTS = [
+        {
+            'name': 'invoices',
+            'title': 'Invoices Export',
+            'app': 'invoice',
+            'description': '-',
+            'categories': [
+                'Misc.'
+            ],
+            'available_for': [
+                'ce'
+            ]
+        },
+    ]
+
+
+    def ready(self):
+        import invoice.signals
 
 class DevInvoiceConfig(AppConfig):
     name = 'invoice.invoice'
 
-    CONFIGURATORS = InvoiceConfig.CONFIGURATORS
-    REPORTS = InvoiceConfig.REPORTS
+    CONFIGURATORS = [
+        {
+            'app': 'invoice.invoice',
+            'name': 'invoice',
+            'title': 'Invoice Settings',
+            'description': '-',
+            'categories': [
+                '4'
+            ]
+        },
+    ]
+    
+    REPORTS = [
+        {
+            'name': 'invoices',
+            'title': 'Invoices Export',
+            'app': 'invoice.invoice',
+            'description': '-',
+            'categories': [
+                'Misc.'
+            ],
+            'available_for': [
+                'ce'
+            ]
+        },
+    ]
+
+    def ready(self):
+        import invoice.invoice.signals
+        

@@ -1,0 +1,170 @@
+{% extends "cis/logged-base.html" %}
+{%block title %}{{ page_title }}{% endblock %}
+
+{% load templatehelpers %}
+{% load crispy_forms_tags %}
+
+{% block body %}
+<main>
+
+    <div class="row">
+        
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href='/ce/invoices/invoice_templates' >All Invoice Templates</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Template</li>
+                </ol>
+            </nav>
+        </div>
+
+        <div class="col-md-12 col-sm-12">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#details">Details</a>
+                </li>
+            </ul>
+
+            <script>
+                jQuery(document).ready(function($) {
+
+                    $('form.frm_ajax').submit(function(event) {
+
+                        var blocked_element = $(this).parent()
+                        $(blocked_element).block();
+                        event.preventDefault()
+
+                        form = $(this)
+
+                        if($("input, select, textarea").hasClass('is-invalid'))
+                            $("input, select, textarea").removeClass('is-invalid')
+                        
+                        if($("input, select, textarea").next('p').length) 
+                            $("input, select, textarea").nextAll('p').empty();
+
+                        let action = $(form).attr('action')
+                        let first_element = '';
+                        
+                        $.post({
+                            url: action,
+                            data: $(form).serialize(),
+                            error: function(xhr, status, error) {
+
+                                let errors = $.parseJSON(xhr.responseJSON.errors);
+                                
+                                for (var name in errors) {
+                                    for (var i in errors[name]) {
+                                        var $input = $("[name='"+ name +"']");
+                                        $input.addClass('is-invalid');
+
+                                        $input.after("<p class='invalid-feedback'><strong class=''>" + errors[name][i].message + "</strong></p>");
+                                    }
+
+                                    if(first_element == '')
+                                        $input.focus()
+                                    else {
+                                        first_element = '-'
+                                    }
+                                }
+
+                                var span = document.createElement('span')
+                                span.innerHTML = xhr.responseJSON.message
+                                swal({
+                                    title: xhr.responseJSON.message,
+                                    content: span,
+                                    icon: 'warning'
+                                });
+
+                                $(blocked_element).unblock();
+                            },
+                            success: function(response) {
+                                swal({
+                                    title: 'Success',
+                                    text: response.message,
+                                    icon: response.status
+                                }).then(
+                                    (value) => {
+                                        if(response.action == 'reload')
+                                            location.reload();
+                                    }
+                                )
+                                $(blocked_element).unblock();
+                            }
+                        })
+                        return false
+                    });
+                });
+            </script>
+
+            {% if messages %}
+            <ul class="messages list-group m-2">
+                {% for message in messages %}
+                <li{% if message.tags %} class="list-group-item {{ message.tags }}" {% endif %}>
+                    {{ message }}</li>
+                    {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if read_only %}
+            <script>
+                jQuery(document).ready(function($) {
+                    $("input, select, textarea").prop("disabled", true);
+                    $("input[type=submit], input[type=button], tfoot, .ajax-add_new").hide()
+                });
+            </script>
+            {% endif %}
+            <!-- Tab panes -->
+            <div class="tab-content">
+                
+                <div class="tab-pane active" id="details">
+                    <div class="bg-white border border-top-0">
+                        <div class="col-12 pt-3 mb-3">
+                            <div class="">
+                                <div class="">
+                                    <div class="">
+                                        <script>
+                                            jQuery(document).ready(function($) {
+                                                $("input.delete").on("click", function() {
+                                                    if(!confirm("Are you sure you want to permanently delete this record and all associated data?"))
+                                                        return;
+                                                    
+                                                        $.ajax({
+                                                        type: 'GET',
+                                                        url: "{% url 'invoice:delete_invoice' record.id%}",
+                                                        success: function (response) {
+                                                            $.unblockUI();
+                                                            swal({
+                                                                title: 'Success',
+                                                                text: response.message,
+                                                                icon: response.status
+                                                            }).then(
+                                                                (value) => {
+                                                                    window.parent.closeModal()
+                                                                }
+                                                            )
+                                                        }
+                                                    });
+                                                });
+                                            });
+                                        </script>
+                                        {{form.media}}
+                                        <form action="" method="post" class="frm_ajax">
+                                            {% csrf_token %}
+                                            {{ form | crispy }}
+                                            <input type="submit" class="btn btn-primary btn-sm" value="Update">&nbsp;
+                                            <!-- <input type="button" value="Delete" class="btn btn-danger btn-sm delete float-right pull-right"> -->
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- end tab #details -->
+
+            </div>
+        </div>
+    </div>
+</main>
+{%endblock%}
