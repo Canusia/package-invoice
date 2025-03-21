@@ -144,8 +144,7 @@ class Invoice(models.Model):
         }
 
         text_message = message.render(Context(context))
-        message += record.tracking_url
-
+        
         to = [
             record.billing_contact_email
         ]
@@ -155,7 +154,8 @@ class Invoice(models.Model):
 
         template = get_template('cis/email.html')
         html_body = template.render({
-            'message': text_message
+            'message': text_message,
+            'tracking_url': record.tracking_url
         })
 
         # Create email
