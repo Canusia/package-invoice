@@ -14,6 +14,10 @@ from django.template import Context, Template
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit
 
+from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.template import Context, Template
+from django.template.loader import get_template, render_to_string
+
 from cis.validators import validate_html_short_code, validate_cron
 
 from form_fields import fields as FFields
@@ -319,7 +323,7 @@ class EventInvoiceForm(forms.Form):
             invoice.status = 'Draft'
 
             invoice.template = data.get('invoice_template')
-            
+
             invoice.term = data.get('term')
             invoice.highschool = highschool
             invoice.number = data.get('invoice_number') + highschool.code
@@ -403,16 +407,22 @@ class EmailForm(forms.Form):
             to = ['kadaji@gmail.com']
 
         message = data.get('message').replace('\r\n', "<br>")
-        message =+ invoice.tracking_url
+        
+        template = get_template('cis/email.html')
+        html_body = template.render({
+            'message': message,
+            'tracking_url': invoice.tracking_url
+        })
 
         # Create email
         email = EmailMessage(
             subject=data.get('subject'),
-            body=message,
+            body=data.get("message"),
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=to
         )
         
+        email.attach_alternative(html_body, "text/html")
         email.content_subtype = "html"
 
         if data.get('attach_invoice'):
