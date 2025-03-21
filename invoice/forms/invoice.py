@@ -229,6 +229,12 @@ class EventInvoiceForm(forms.Form):
         label='Due Date'
     )
     
+    invoice_template = forms.ModelChoiceField(
+        queryset=None,
+        label='Invoice Template',
+        required=True
+    )
+    
     billing_contact = forms.ModelChoiceField(
         queryset=None,
         label='Billing Contact Role'
@@ -262,6 +268,8 @@ class EventInvoiceForm(forms.Form):
         self.fields['event'].queryset = Event.objects.all().order_by('-start_time')
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
         self.fields['alt_billing_contact'].queryset = HSPosition.objects.all().order_by('name')
+
+        self.fields['invoice_template'].queryset = InvoiceTemplate.objects.all().order_by('name')
 
         self.request = request
 
@@ -310,6 +318,8 @@ class EventInvoiceForm(forms.Form):
             invoice.description = description
             invoice.status = 'Draft'
 
+            invoice.template = data.get('invoice_template')
+            
             invoice.term = data.get('term')
             invoice.highschool = highschool
             invoice.number = data.get('invoice_number') + highschool.code
