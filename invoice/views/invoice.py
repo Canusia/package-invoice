@@ -170,9 +170,28 @@ def delete(request, record_id):
             'message':'Success removed invoice',
         }
     except Exception as e:
+        print(e)
         data = {
             'status':'error',
             'message':'You do not have permission to delete this record',
+        }
+    return JsonResponse(data)
+
+def clone(request, record_id):
+    record = get_object_or_404(Invoice, pk=record_id)
+
+    try:
+        cloned_record = record.clone()
+
+        data = {
+            'status':'success',
+            'message':'Successfully cloned invoice. Click "Okay" to continue.',
+            'redirect_url': cloned_record.ce_url
+        }
+    except Exception as e:
+        data = {
+            'status':'error',
+            'message':'You do not have permission to clone this record',
         }
     return JsonResponse(data)
 

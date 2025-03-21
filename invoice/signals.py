@@ -8,21 +8,26 @@ from django.contrib.sites.models import Site
 from django.template import Context, Template
 from django.template.loader import get_template, render_to_string
 
-from mailer import send_mail, send_html_mail
-
 from .models import InvoiceItem, Invoice
 
 from .settings.invoice import invoice as InvoiceSettings
 
 @receiver(post_save, sender=InvoiceItem)
-@receiver(post_delete, sender=InvoiceItem)
 def line_item_updated(sender, instance, created, **kwargs):
+    
     invoice = instance.invoice
 
     invoice.update_total()
 
+@receiver(post_delete, sender=InvoiceItem)
+def line_item_deleted(sender, instance, **kwargs):
+    
+    invoice = instance.invoice
+    invoice.update_total()
+
+
 @receiver(post_save, sender=Invoice)
-def line_item_updated(sender, instance, created, **kwargs):
+def invoice_updated(sender, instance, created, **kwargs):
     
     configs = InvoiceSettings.from_db()
 

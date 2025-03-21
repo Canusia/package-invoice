@@ -329,11 +329,9 @@ class EventInvoiceForm(forms.Form):
                 item.description = teacher
                 item.created_by = request.user
                 
-                print(item.description, item.amount)
-
                 item.save()
 
-            return invoice
+        return invoice
 
 
 class InvoiceTemplateForm(forms.ModelForm):

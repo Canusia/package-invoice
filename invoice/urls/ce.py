@@ -5,10 +5,14 @@ from ..views.invoice import (
     detail as invoice,
     add_new as add_invoice,
     delete as delete_invoice,
+    clone as clone_invoice,
+    as_pdf,
+    
     delete_line_item,
     event_info,
+    
     do_bulk_action,
-    as_pdf,
+    
     InvoiceViewSet,
     InvoiceItemViewSet,
     InvoiceTemplateViewSet,
@@ -49,6 +53,7 @@ urlpatterns = [
     path('invoice/as_pdf/<uuid:record_id>/', as_pdf, name='as_pdf'),
     
     path('invoice/delete/<uuid:record_id>/', delete_invoice, name='delete_invoice'),
+    path('invoice/clone/<uuid:record_id>/', clone_invoice, name='clone_invoice'),
     path('invoice/line_item/delete/<uuid:record_id>/', delete_line_item, name='delete_line_item'),
     path('invoice/bulk_action/', do_bulk_action, name='bulk_action'),
 

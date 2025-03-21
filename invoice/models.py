@@ -295,6 +295,32 @@ class Invoice(models.Model):
 
         return note
     
+    def clone(self):
+        # Clone the invoice
+        cloned_invoice = Invoice.objects.create(
+            number=f"{self.number}-clone",
+            created_by=self.created_by,
+            highschool=self.highschool,
+            term=self.term,
+            template=self.template,
+            due_date=self.due_date,
+            description=self.description,
+            meta=self.meta,
+            status=self.status,
+            total_amount=self.total_amount,
+        )
+
+        # Clone related invoice items
+        for item in self.invoiceitem_set.all():
+            InvoiceItem.objects.create(
+                created_by=item.created_by,
+                invoice=cloned_invoice,
+                description=item.description,
+                meta=item.meta,
+                amount=item.amount,
+            )
+
+        return cloned_invoice
 
 class InvoiceNote(Note, models.Model):
     invoice = models.ForeignKey(
