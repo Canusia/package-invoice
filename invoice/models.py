@@ -182,7 +182,7 @@ class Invoice(models.Model):
             file_attached = True
 
         # Send email
-        send_html_mail(email)
+        email.send(fail_silently=True)
 
         record.add_note(None, f'Sent email to {to}<br>{message}<br>File Attached - {file_attached}')
 
