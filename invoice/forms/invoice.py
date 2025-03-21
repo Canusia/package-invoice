@@ -31,8 +31,6 @@ from ..models import Invoice, InvoiceItem, InvoiceTemplate, InvoiceNote
 
 from ..settings.invoice import invoice as InvoiceSettings
 
-from invoice.invoice.tasks import notify_invoice_update
-
 class InvoiceChangeStatusForm(forms.Form):
     ids = forms.MultipleChoiceField(
         required=False,
