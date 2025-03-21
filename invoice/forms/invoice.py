@@ -415,7 +415,7 @@ class EmailForm(forms.Form):
         })
 
         # Create email
-        email = EmailMessage(
+        email = EmailMultiAlternatives(
             subject=data.get('subject'),
             body=data.get("message"),
             from_email=settings.DEFAULT_FROM_EMAIL,
