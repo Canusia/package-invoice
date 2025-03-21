@@ -10,3 +10,4 @@ recursive-include invoice/management *
 recursive-include invoice/migrations *
 recursive-include invoice/reports *
 recursive-include invoice/settings *
+recursive-include invoice/staticfiles *

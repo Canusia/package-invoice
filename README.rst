@@ -6,7 +6,7 @@ In settings.py,
         'invoice.apps.InvoiceConfig'
 
     Add path to STATIC_FILES_DIRS
-        os.path.join(BASE_DIR, 'invoice', 'staticfiles'),
+        os.path.join(get_package_path("invoice"), 'staticfiles'),
 
 In myce.urls.py
 - path('ce/invoices/', include('invoice.urls.ce'))
