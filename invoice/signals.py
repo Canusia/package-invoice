@@ -11,6 +11,7 @@ from django.template.loader import get_template, render_to_string
 from .models import InvoiceItem, Invoice
 
 from .settings.invoice import invoice as InvoiceSettings
+from .tasks import notify_invoice_update
 
 @receiver(post_save, sender=InvoiceItem)
 def line_item_updated(sender, instance, created, **kwargs):
@@ -34,5 +35,11 @@ def invoice_updated(sender, instance, created, **kwargs):
     if configs.get('is_active', 'No') == 'No':
         return
     
-    if instance.status in configs.get('status_notification_trigger', []):
-        instance.send_notification()
+    previous_status = instance.tracker.previous('status')
+    status = instance.status
+
+    if created and status in configs.get('status_notification_trigger', []):
+        notify_invoice_update.enqueue(str(instance.id))
+    elif previous_status != status and instance.status in configs.get('status_notification_trigger', []):
+        notify_invoice_update.enqueue(str(instance.id))
+    

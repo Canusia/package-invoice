@@ -18,6 +18,7 @@ from django.template import Context, Template
 from django.template.loader import get_template, render_to_string
 
 from mailer import send_mail, send_html_mail
+from model_utils import FieldTracker
 
 from cis.settings.pd_event import pd_event
 from cis.utils import export_to_excel, event_file_upload_path, getDomain
@@ -59,7 +60,7 @@ class Invoice(models.Model):
 
     term = models.ForeignKey('cis.Term', on_delete=models.PROTECT)
     
-    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT, blank=True, null=True)
+    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT, default='4851acab-e7ff-497d-864c-a3387257a4aa')
 
     due_date = models.DateField(
         verbose_name="Due Date",
@@ -93,6 +94,8 @@ class Invoice(models.Model):
         null=True,
         default='Draft'
     )
+
+    tracker = FieldTracker(fields=['status'])
 
     total_amount = models.FloatField(
         default=0.0,
@@ -140,7 +143,7 @@ class Invoice(models.Model):
             'invoice': record
         }
 
-        message = message.render(Context(context))
+        text_message = message.render(Context(context))
         message += record.tracking_url
 
         to = [
@@ -150,14 +153,20 @@ class Invoice(models.Model):
         if configs.get('is_active') == 'Debug':
             to = configs.get('debug_list', 'kadaji@gmail.com').split(',')
 
+        template = get_template('cis/email.html')
+        html_body = template.render({
+            'message': text_message
+        })
+
         # Create email
-        email = EmailMessage(
+        email = EmailMultiAlternatives(
             subject=subject,
-            body=message,
+            body=text_message,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=to
         )
-        
+        email.attach_alternative(html_body, "text/html")
+
         email.content_subtype = "html"
 
         file_attached = False
@@ -173,7 +182,7 @@ class Invoice(models.Model):
             file_attached = True
 
         # Send email
-        email.send(fail_silently=True)
+        send_html_mail(email)
 
         record.add_note(None, f'Sent email to {to}<br>{message}<br>File Attached - {file_attached}')
 

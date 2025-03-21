@@ -31,6 +31,8 @@ from ..models import Invoice, InvoiceItem, InvoiceTemplate, InvoiceNote
 
 from ..settings.invoice import invoice as InvoiceSettings
 
+from invoice.invoice.tasks import notify_invoice_update
+
 class InvoiceChangeStatusForm(forms.Form):
     ids = forms.MultipleChoiceField(
         required=False,
@@ -94,7 +96,7 @@ class InvoiceChangeStatusForm(forms.Form):
                 )
 
                 record.status = new_status                
-                record.save()            
+                record.save()                
             except Exception as e:
                 print(e)
 
@@ -495,11 +497,8 @@ class InvoiceForm(forms.ModelForm):
             'template',
             # 'total_amount'
         ]
-        required = {
-            'description': False,
-            'template': True
-        }
-
+        
+        
         labels = {
             'description': 'Description'
         }
