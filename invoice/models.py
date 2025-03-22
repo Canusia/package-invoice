@@ -60,7 +60,7 @@ class Invoice(models.Model):
 
     term = models.ForeignKey('cis.Term', on_delete=models.PROTECT)
     
-    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT, default='4851acab-e7ff-497d-864c-a3387257a4aa')
+    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT)
 
     due_date = models.DateField(
         verbose_name="Due Date",
@@ -114,7 +114,9 @@ class Invoice(models.Model):
         from cis.utils import getDomain
         url = getDomain() + reverse_lazy('invoice:track_email') + f"?invoice={self.id}&date=" + datetime.datetime.now().strftime('%Y-%m-%d')
 
-        return url
+        img = f'<img src="{url}" width="1" height="1" style="display:none;" alt=""/>'
+
+        return img
     
     @property
     def ce_url(self):
