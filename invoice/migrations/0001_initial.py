@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('cis', '0019_alter_classsection_co_reqs_alter_customuser_email_and_more'),
+        # ('cis', '0019_alter_classsection_co_reqs_alter_customuser_email_and_more'),
     ]
 
     operations = [
