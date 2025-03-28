@@ -185,7 +185,7 @@ def clone(request, record_id):
 
         data = {
             'status':'success',
-            'message':'Successfully cloned invoice. Click "Okay" to continue.',
+            'message':'Successfully cloned invoice. Click "Ok" to continue.',
             'redirect_url': cloned_record.ce_url
         }
     except Exception as e:
@@ -535,7 +535,7 @@ def index(request):
 
             data = {
                 'status':'success',
-                'message':'Successfully added invoice(s). Click "Okay" to continue.',
+                'message':'Successfully added invoice(s). Click "Ok" to continue.',
                 'action': 'reload'
             }
             return JsonResponse(data)
@@ -635,7 +635,7 @@ def invoice_templates(request):
 
             data = {
                 'status':'success',
-                'message':'Successfully added template. Click "Okay" to continue.',
+                'message':'Successfully added template. Click "Ok" to continue.',
                 'action': 'reload'
             }
             return JsonResponse(data)
