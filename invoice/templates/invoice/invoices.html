@@ -12,19 +12,68 @@
         <div class="row">
             <div class="col-sm-6 col-xs-12">
                 <h1 class="h3 mb-4 text-gray-800">{{ page_title }}&nbsp;
-                    <a class="btn btn-primary btn-sm small collapsed" data-toggle="collapse" href="#addNewItem"
-                        role="button" aria-expanded="false" aria-controls="multiCollapseExample1"><i
-                            class="fa fa-plus"></i>&nbsp;Import From Event</a>
+                    <div class="dropdown d-inline">
+                        <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          Add New
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                          <a class="dropdown-item collapsed" data-toggle="collapse" href="#addNewItem"
+                          role="button" aria-expanded="false" aria-controls="multiCollapseExample1"><i
+                              class="fa fa-plus"></i>&nbsp;Create From Event</a>
+                          <a class="dropdown-item collapsed" data-toggle="collapse" href="#addNewItem_Registrations"
+                          role="button" aria-expanded="false" aria-controls="multiCollapseExample1"><i
+                              class="fa fa-plus"></i>&nbsp;Create From Registrations</a>
+                        </div>
+                    </div>
                 </h1>
             </div>
         </div>
 
         <div class="row mb-3">
             <div class="col-md-12">
+
+                <div class="collapse multi-collapse" id="addNewItem_Registrations">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Create From Registration</h4>
+
+                            {{ import_from_registrations.media }}
+                            <div class="row">
+                                <div class="col-8">
+
+                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_item">
+                                        <div id="frm_add_new_item">
+                                            {% csrf_token %}
+                                            {{ import_from_registrations | crispy }}
+                                        </div>
+                                        <input type="submit" class="btn btn-primary btn-sm" value="Create Invoice(s) &raquo;">
+                                    </form>
+
+                                </div>
+
+                                <div class="col-4">
+                                    <table class="table d-none" id="event_details" >
+                                        <tr>
+                                            <td><h3>Total Attended</h3></td>
+                                            <td>
+                                                <h3 id="event_info">< Select Event > </h3>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>High School(s)</td>
+                                            <td><div id="highschool_info"></div></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="collapse multi-collapse" id="addNewItem">
                     <div class="card">
                         <div class="card-body">
-                            <h4 class="card-title">Import From Event</h4>
+                            <h4 class="card-title">Create From Event</h4>
 
                             {{ import_from_event.media }}
                             <div class="row">
@@ -58,6 +107,7 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 

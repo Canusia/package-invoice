@@ -348,6 +348,265 @@ class EventInvoiceForm(forms.Form):
         return invoice
 
 
+class RegistrationsInvoiceForm(forms.Form):
+    from cis.models.section import StudentRegistration
+
+    action = forms.CharField(
+        required=True,
+        widget=forms.HiddenInput,
+        initial='registrations_invoice'
+    )
+
+    class_section_terms = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=True,
+        label='Class Section Term(s)'
+    )
+
+    courses = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False
+    )
+
+    highschools = forms.ModelMultipleChoiceField(
+        queryset=None,
+        required=False,
+        label='High School(s)'
+    )
+
+    registration_status = forms.MultipleChoiceField(
+        choices=StudentRegistration.STATUS_OPTIONS,
+        required=True,
+        widget=forms.CheckboxSelectMultiple,
+        label='Registration Status to Include',
+        help_text='Select all that apply'
+    )
+
+    cost_model = forms.ChoiceField(
+        label='Cost Model',
+        required=True,
+        help_text='If cost per credit is selected, the cost will be calculated based on the number of credits for each course multiplied by rate set in the academic year. If cost per section is selected, the cost will be calculated based on the cost of each class section.',
+        choices=[
+            ('', 'Select Cost Model'),
+            ('cost_per_credit', 'Cost Per Credit'),
+            ('cost_per_section', 'Cost Per Section')
+        ]
+    )
+
+    line_item_grouping = forms.ChoiceField(
+        choices=[
+            ('', 'Select Line Item Grouping'),
+            ('by_course', 'By Course'),
+            ('by_student', 'By Student')
+        ],
+        label='Line Item Grouping',
+        required=True,
+        help_text='Select the line item grouping for this invoice. This will determine how the line items are grouped in the invoice.'
+    )
+
+    term = forms.ModelChoiceField(
+        queryset=None,
+        required=True,
+        label='Invoice Term'
+    )
+
+    due_date = forms.DateField(
+        label='Invoice Due Date'
+    )
+    
+    invoice_template = forms.ModelChoiceField(
+        queryset=None,
+        label='Invoice Template',
+        help_text='Select the invoice template to use for this invoice',
+        required=True
+    )
+    
+    billing_contact = forms.ModelChoiceField(
+        queryset=None,
+        label='Billing Contact Role'
+    )
+
+    alt_billing_contact = forms.ModelChoiceField(
+        queryset=None,
+        label='Alt Billing Contact Role'
+    )
+
+    invoice_number = forms.CharField(
+        label='Invoice # Prefix',
+        required=True
+    )
+
+    description = forms.CharField(
+        widget=forms.Textarea,
+        label='Invoice Description',
+        help_text='Customize with {{highschool_name}}'
+    )
+
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        from cis.models.course import Course
+
+        terms = Term.objects.all().order_by('-code')
+        self.fields['term'].queryset = terms
+        self.fields['class_section_terms'].queryset = terms
+        self.fields['courses'].queryset = Course.objects.all().order_by('name')
+        self.fields['highschools'].queryset = HighSchool.objects.all().order_by('name')
+
+        self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
+        self.fields['alt_billing_contact'].queryset = HSPosition.objects.all().order_by('name')
+
+        self.fields['invoice_template'].queryset = InvoiceTemplate.objects.all().order_by('name')
+
+        self.request = request
+
+        self.helper = FormHelper()
+        self.helper.form_class = 'frm_ajax'
+        self.helper.form_id = 'frm_event_invoice'
+        self.helper.form_method = 'POST'
+
+    def save(self, request, commit=True):
+        from cis.models.section import StudentRegistration
+
+        data = self.cleaned_data
+
+        # get all the registrations for the selected class section terms
+        registrations = StudentRegistration.objects.filter(
+            class_section__term__in=data.get('class_section_terms'),
+            status__in=data.get('registration_status')
+        )
+        # filter by courses if selected
+        if data.get('courses'):
+            registrations = registrations.filter(
+                class_section__course__in=data.get('courses')
+            )
+        # filter by high schools if selected
+        if data.get('highschools'):
+            registrations = registrations.filter(
+                student__highschool__in=data.get('highschools')
+            )
+        
+        if data.get('line_item_grouping') == 'by_student':
+            registrations = registrations.order_by(
+                'student__user__last_name', 'student__user__first_name', 'class_section__term__code', 'class_section__course__name'
+            )
+        else:
+            registrations = registrations.order_by(
+                'class_section__term__code',  'class_section__course__name', 'student__user__last_name', 'student__user__first_name'
+            )
+
+        highschools = {}
+        for record in registrations:
+            if not highschools.get(record.student.highschool.id):
+                highschools[record.student.highschool.id] = []
+
+            highschools[record.student.highschool.id].append(record)
+        
+        for hsid, records in highschools.items():
+        
+            description = Template(data.get('description'))
+            highschool = HighSchool.objects.get(pk=hsid)
+
+            context = Context({
+                'highschool_name': highschool.name
+            })
+
+            description = description.render(context)
+
+            invoice = Invoice()
+            invoice.due_date = data.get('due_date')
+            invoice.created_by = request.user
+            invoice.description = description
+            invoice.status = 'Draft'
+
+            invoice.template = data.get('invoice_template')
+
+            invoice.term = data.get('term')
+            invoice.highschool = highschool
+            invoice.number = data.get('invoice_number') + highschool.code
+
+            invoice.meta = {}
+            invoice.meta['billing_contact_id'] = str(data.get('billing_contact').id)
+            invoice.meta['alt_billing_contact_id'] = str(data.get('alt_billing_contact').id)
+
+            invoice.save()
+
+            weight = 1
+            current_item = previous_item = ''
+            for record in records:
+                item = InvoiceItem(
+                    invoice=invoice
+                )
+
+                if data.get('cost_model') == 'cost_per_credit':
+                    item.amount = record.class_section.course.credit_hours * record.class_section.term.academic_year.cost_per_credit
+                elif data.get('cost_model') == 'cost_per_section':
+                    item.amount = record.class_section.cost
+
+                if data.get('line_item_grouping') == 'by_student':
+                    current_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
+
+                    if current_item != previous_item:
+                        header_item = InvoiceItem(
+                            invoice=invoice,
+                            amount=None,
+                            created_by = request.user,
+                            description=current_item,
+                            weight=weight
+                        )
+                        header_item.save()
+                        weight += 1
+
+                        if previous_item != '':
+                            header_item = InvoiceItem(
+                                invoice=invoice,
+                                amount=0,
+                                created_by = request.user,
+                                description='+++++++++++',
+                                weight=weight
+                            )
+                            header_item.save()
+                            weight += 1
+
+                    item.description = f'{record.class_section.term}, {record.class_section.course.name}'
+
+                    previous_item = f'{record.student.user.first_name} {record.student.user.last_name}'
+                else:
+                    current_item = f'{record.class_section.term}, {record.class_section.course.name}'
+
+                    if current_item != previous_item:
+                        header_item = InvoiceItem(
+                            invoice=invoice,
+                            amount=0,
+                            created_by = request.user,
+                            description=current_item,
+                            weight=weight
+                        )
+                        header_item.save()
+                        weight += 1
+
+                        if previous_item != '':
+                            header_item = InvoiceItem(
+                                invoice=invoice,
+                                amount=0,
+                                created_by = request.user,
+                                description='+++++++++++',
+                                weight=weight
+                            )
+                            header_item.save()
+                            weight += 1
+
+                    item.description = f'{record.student.user.last_name}, {record.student.user.first_name}'
+
+                    previous_item = f'{record.class_section.term}, {record.class_section.course.name}'
+
+                item.created_by = request.user
+                item.weight = weight
+                item.save()
+
+                weight += 1
+        return
+
 class InvoiceTemplateForm(forms.ModelForm):
 
     class Meta:

@@ -358,6 +358,11 @@ class InvoiceItem(models.Model):
     created_on = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey('cis.CustomUser', on_delete=models.PROTECT)
     
+    weight = models.IntegerField(
+        default=0,
+        verbose_name='Weight',
+        null=True,
+    )
     invoice = models.ForeignKey('invoice.Invoice', on_delete=models.PROTECT, blank=True, null=True)
 
     description = models.TextField(
@@ -376,6 +381,11 @@ class InvoiceItem(models.Model):
         verbose_name='Amount',
         null=True,
     )
+
+    class Meta:
+        ordering = ['weight']
+        verbose_name = 'Invoice Item'
+        verbose_name_plural = 'Invoice Items'
     
     @property
     def formatted_amount(self):

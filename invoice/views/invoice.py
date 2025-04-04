@@ -30,6 +30,7 @@ from cis.models.teacher import (
 from ..forms.invoice import (
     EventInvoiceForm, InvoiceForm, InvoiceTemplateForm, InvoiceNoteForm,
     EmailForm,
+    RegistrationsInvoiceForm,
     InvoiceChangeStatusForm
 )
 
@@ -275,7 +276,7 @@ def edit_line_item(request):
     record = get_object_or_404(InvoiceItem, pk=ids[0])
     form = EditLineItemForm(record, 'edit_line_item')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Edit Line Item',
         'allow_delete': True,
         'form': form,
@@ -312,7 +313,7 @@ def update_status(request):
     form = InvoiceChangeStatusForm(ids)
     context = {
         'title': 'Change Status',
-        'message': 'Some Message',
+        'message': '',
         'form': form
     }
     
@@ -352,7 +353,7 @@ def add_new_item(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = AddLineItemForm(record, 'add_new_item')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Add New Line Item',
         'allow_delete': False,
         'form': form,
@@ -421,7 +422,7 @@ def send_email(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = EmailForm(record, 'send_email')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Send Email',
         'allow_delete': False,
         'form': form,
@@ -463,7 +464,7 @@ def add_new_note(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = InvoiceNoteForm(record, 'add_new_note')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Add New Note',
         'allow_delete': False,
         'form': form,
@@ -525,26 +526,46 @@ def index(request):
         """
         Add New
         """
-        form = EventInvoiceForm(
-            request=request,
-            data=request.POST
-        )
+        if request.POST.get('action') == 'import_from_event':
+            form = EventInvoiceForm(
+                request=request,
+                data=request.POST
+            )
 
-        if form.is_valid():
-            record = form.save(request=request, commit=True)
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
 
-            data = {
-                'status':'success',
-                'message':'Successfully added invoice(s). Click "Ok" to continue.',
-                'action': 'reload'
-            }
-            return JsonResponse(data)
-        else:
-            return JsonResponse({
-                'message': 'Please correct the errors and try again',
-                'errors': form.errors.as_json()
-            }, status=400)
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
+        elif request.POST.get('action') == 'registrations_invoice':
+            form = RegistrationsInvoiceForm(
+                request=request,
+                data=request.POST
+            )
 
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
+
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
 
     menu = draw_menu(cis_menu, 'invoice', 'all', 'ce')
     urls = {
@@ -562,6 +583,7 @@ def index(request):
             'urls': urls,
             'menu': menu,
             'import_from_event': EventInvoiceForm(request),
+            'import_from_registrations': RegistrationsInvoiceForm(request),
             'terms': Term.objects.all().order_by('-code'),
             'api_url': '/ce/invoices/api/invoices?format=datatables'
         }

@@ -97,6 +97,8 @@
                                     <thead>
                                         <tr>
                                             <th></th>
+                                            <th data-data="weight" data-name="weight">Weight
+                                            </th>
                                             <th data-data="description" data-name="description">Description
                                             </th>
                                             <th data-data="formatted_amount" searchable="1" data-name="amount">Amount
@@ -105,6 +107,7 @@
                                         </tr>
                                     </thead>
                                     <tfoot>
+                                        <th></th>
                                         <th></th>
                                         <th>Description</th>
                                         <th>Amount</th>
@@ -150,6 +153,8 @@
         var record_clone_url = "{% url 'invoice:clone_invoice' record.id %}";
 
         var record_bulk_action = "{% url 'invoice:bulk_action' %}";
+
+        var record_id = "{{record.id}}";
     </script>
 
 <script src="{% static 'js/invoice.js' %}"></script>
