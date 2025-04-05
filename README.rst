@@ -34,7 +34,10 @@ In Settings -> Menu add the menu items
 Include debounce in header-includes.html
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-throttle-debounce/1.1/jquery.ba-throttle-debounce.min.js" integrity="sha512-JZSo0h5TONFYmyLMqp8k4oPhuo6yNk9mHM+FY50aBjpypfofqtEWsAgRDQm94ImLCzSaHeqNvYuD9382CEn2zw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
+++++++
+In cis.forms.term
+- enable cost per credit hour field for AcademicYear Model
+++++++
 In cis.models.section
 - create cost field in ClassSection MOdel
     cost = models.FloatField(default=0)
@@ -53,6 +56,7 @@ In cis.vews.section
     if action == 'change_tuition':
         return change_tuition(request)
 ++++++
+from cis.forms.section import BulkClassTutionChangeForm
 def change_tuition(request):
     template = 'cis/sections/bulk_action.html'
 
@@ -87,10 +91,6 @@ def change_tuition(request):
     
     return render(request, template, context)
     
-
-In cis.forms.term
-- enable cost per credit hour field for AcademicYear Model
-
 class BulkClassTutionChangeForm(forms.Form):
     record_ids = forms.MultipleChoiceField(
         required=False,

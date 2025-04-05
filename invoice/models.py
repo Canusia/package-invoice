@@ -192,7 +192,9 @@ class Invoice(models.Model):
         record = self
 
         options = {
-            'page-size': 'Letter'
+            'page-size': 'Letter',
+            'image-quality': 100,
+            'disable-smart-shrinking': ''
         }
 
         base_template = 'invoice/base.html'
@@ -266,7 +268,18 @@ class Invoice(models.Model):
 
         result = ""
         for item in line_items:
-            result += f"<tr><td>{item.description}</td><td>{item.formatted_amount}</td></tr>"
+            if item.meta and item.meta.get('summary') == 'true':
+                result += f"<tr><td style='font-weight: bold;'>{item.meta.get('col1')}</td><td style='font-weight: bold;'>{item.meta.get('col2')}</td></tr>"
+                continue
+
+            result += f"<tr>"
+            result += "<td>"
+
+            if item.meta.get('padding') == 'true':
+                result += "<div style='padding-left: 10px; display: inline-block;'>&nbsp;</div>"
+
+            result += f"{item.description}</td>"
+            result += f"<td>{item.formatted_amount}</td></tr>"
         
         return mark_safe(result)
     
@@ -278,6 +291,8 @@ class Invoice(models.Model):
     
     @property
     def formatted_amount(self):
+        if self.total_amount is None:
+            return ""
         return f"${self.total_amount:.2f}"
     
     def update_total(self):
@@ -389,4 +404,7 @@ class InvoiceItem(models.Model):
     
     @property
     def formatted_amount(self):
+        if self.amount is None:
+            return ""
+        
         return f"${self.amount:.2f}"

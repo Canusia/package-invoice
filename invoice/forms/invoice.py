@@ -264,7 +264,10 @@ class EventInvoiceForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         if getattr(settings, 'DEBUG'):
-            from pd_event.pd_event.models import Event
+            try:
+                from pd_event.pd_event.models import Event
+            except:
+                from pd_event.models import Event
         else:
             from pd_event.models import Event
 
@@ -533,9 +536,13 @@ class RegistrationsInvoiceForm(forms.Form):
 
             weight = 1
             current_item = previous_item = ''
+            total_amount = total_number = 0
             for record in records:
                 item = InvoiceItem(
-                    invoice=invoice
+                    invoice=invoice,
+                    meta={
+                        'padding': 'true'
+                    }
                 )
 
                 if data.get('cost_model') == 'cost_per_credit':
@@ -547,6 +554,25 @@ class RegistrationsInvoiceForm(forms.Form):
                     current_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
                     if current_item != previous_item:
+                        if previous_item != '':
+                            header_item = InvoiceItem(
+                                invoice=invoice,
+                                amount=None,
+                                created_by = request.user,
+                                description=f'Total for {previous_item} - {total_number} classes ${total_amount:.2f}',
+                                weight=weight,
+                                meta={
+                                    'summary': 'true',
+                                    'col1': f'Total for {previous_item} - {total_number} classes',
+                                    'col2': f"${total_amount:.2f}",
+                                }
+                            )
+                            header_item.save()
+                            weight += 1
+
+                            total_number = 0
+                            total_amount = 0
+
                         header_item = InvoiceItem(
                             invoice=invoice,
                             amount=None,
@@ -557,27 +583,40 @@ class RegistrationsInvoiceForm(forms.Form):
                         header_item.save()
                         weight += 1
 
-                        if previous_item != '':
-                            header_item = InvoiceItem(
-                                invoice=invoice,
-                                amount=0,
-                                created_by = request.user,
-                                description='+++++++++++',
-                                weight=weight
-                            )
-                            header_item.save()
-                            weight += 1
 
                     item.description = f'{record.class_section.term}, {record.class_section.course.name}'
 
-                    previous_item = f'{record.student.user.first_name} {record.student.user.last_name}'
+                    previous_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
+
+                    total_number += 1
+                    total_amount += item.amount
                 else:
                     current_item = f'{record.class_section.term}, {record.class_section.course.name}'
 
                     if current_item != previous_item:
+
+                        if previous_item != '':
+                            header_item = InvoiceItem(
+                                invoice=invoice,
+                                amount=None,
+                                created_by = request.user,
+                                description=f'Total for {previous_item} - {total_number} students ${total_amount:.2f}',
+                                weight=weight,
+                                meta={
+                                    'summary': 'true',
+                                    'col1': f'Total for {previous_item} - {total_number} students',
+                                    'col2': f"${total_amount:.2f}",
+                                }
+                            )
+                            header_item.save()
+                            weight += 1
+
+                            total_number = 0
+                            total_amount = 0
+
                         header_item = InvoiceItem(
                             invoice=invoice,
-                            amount=0,
+                            amount=None,
                             created_by = request.user,
                             description=current_item,
                             weight=weight
@@ -585,26 +624,48 @@ class RegistrationsInvoiceForm(forms.Form):
                         header_item.save()
                         weight += 1
 
-                        if previous_item != '':
-                            header_item = InvoiceItem(
-                                invoice=invoice,
-                                amount=0,
-                                created_by = request.user,
-                                description='+++++++++++',
-                                weight=weight
-                            )
-                            header_item.save()
-                            weight += 1
 
                     item.description = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
                     previous_item = f'{record.class_section.term}, {record.class_section.course.name}'
+
+                    total_number += 1
+                    total_amount += item.amount
 
                 item.created_by = request.user
                 item.weight = weight
                 item.save()
 
                 weight += 1
+
+            if data.get('line_item_grouping') == 'by_student':
+                header_item = InvoiceItem(
+                    invoice=invoice,
+                    amount=None,
+                    created_by = request.user,
+                    description=f'Total for {previous_item} - {total_number} classes ${total_amount:.2f}',
+                    weight=weight,
+                    meta={
+                        'summary': 'true',
+                        'col1': f'Total for {previous_item} - {total_number} classes',
+                        'col2': f"${total_amount:.2f}",
+                    }
+                )
+                header_item.save()
+            else:
+                header_item = InvoiceItem(
+                    invoice=invoice,
+                    amount=None,
+                    created_by = request.user,
+                    description=f'Total for {previous_item} - {total_number} students ${total_amount:.2f}',
+                    weight=weight,
+                    meta={
+                        'summary': 'true',
+                        'col1': f'Total for {previous_item} - {total_number} students',
+                        'col2': f"${total_amount:.2f}",
+                    }
+                )
+                header_item.save()
         return
 
 class InvoiceTemplateForm(forms.ModelForm):
