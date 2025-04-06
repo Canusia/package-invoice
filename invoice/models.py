@@ -190,11 +190,17 @@ class Invoice(models.Model):
 
     def as_pdf(self, mode='pdf'):
         record = self
-
+        import os
+        from django.conf import settings
+        header_path = os.path.join(settings.BASE_DIR, 'templates', 'invoice', 'header.html')
+    
         options = {
             'page-size': 'Letter',
             'image-quality': 100,
-            'disable-smart-shrinking': ''
+            'disable-smart-shrinking': '',
+            'margin-top': '55mm',  # Increase top margin to make room for header
+            'header-html': header_path,
+            'header-spacing': 3,   # Space between header and content in mm
         }
 
         base_template = 'invoice/base.html'
