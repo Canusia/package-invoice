@@ -108,7 +108,8 @@ class pending_invoices(forms.Form):
 
         file_name = "pending_highschool_invoices_export.csv"
         fields = {
-            'class_section.class_number': 'High School'
+            'class_section.class_number': 'High School',
+            'class_section.class_number': 'District'
         }
         
         import csv
@@ -120,6 +121,11 @@ class pending_invoices(forms.Form):
             row = []
             
             row.append(record.name)
+            if record.highschool.district:
+                row.append(record.highschool.district.name)
+            else:
+                row.append('')
+                
             writer.writerow(row)
         
         path = "reports/" + str(task.id) + "/" + file_name
