@@ -98,6 +98,7 @@ class invoices(forms.Form):
             'Invoice Num',
             'Due Date',
             'High School',
+            'District',
             'Status',
             'Amount',
             'Billing Contact',
@@ -115,6 +116,11 @@ class invoices(forms.Form):
                 row.append(record.number)
                 row.append(record.due_date)
                 row.append(record.highschool.name)
+                if record.highschool.district:
+                    row.append(record.highschool.district.name)
+                else:
+                    row.append('')
+                    
                 row.append(record.status)
                 row.append(record.total_amount)
                 row.append(record.billing_contact)
