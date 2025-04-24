@@ -121,8 +121,8 @@ class pending_invoices(forms.Form):
             row = []
             
             row.append(record.name)
-            if record.highschool.district:
-                row.append(record.highschool.district.name)
+            if record.district:
+                row.append(record.district.name)
             else:
                 row.append('')
                 
