@@ -70,7 +70,6 @@ class invoices(forms.Form):
             )
             
         self.helper.add_input(Submit('submit', 'Generate Export'))
-
         self.fields['term'].queryset = Term.objects.all().order_by('-code')
 
     def run(self, task, data):

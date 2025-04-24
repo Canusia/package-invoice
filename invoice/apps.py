@@ -29,6 +29,18 @@ class InvoiceConfig(AppConfig):
                 'ce'
             ]
         },
+        {
+            'name': 'pending_invoices',
+            'title': 'Pending High Schools Invoices Export',
+            'app': 'invoice',
+            'description': 'Select the class section terms and registration status to generate a list of high schools that have registrations in those term(s) but no invoice for the selected invoice term with the given prefix.',
+            'categories': [
+                'Misc.'
+            ],
+            'available_for': [
+                'ce'
+            ]
+        }
     ]
 
 
@@ -63,6 +75,18 @@ class DevInvoiceConfig(AppConfig):
                 'ce'
             ]
         },
+        {
+            'name': 'pending_invoices',
+            'title': 'Pending High Schools Invoices Export',
+            'app': 'invoice.invoice',
+            'description': 'Select the class section terms and registration status to generate a list of high schools that have registrations in those term(s) but no invoice for the selected invoice term with the given prefix.',
+            'categories': [
+                'Misc.'
+            ],
+            'available_for': [
+                'ce'
+            ]
+        }
     ]
 
     def ready(self):

@@ -483,6 +483,7 @@ class RegistrationsInvoiceForm(forms.Form):
             registrations = registrations.filter(
                 class_section__course__in=data.get('courses')
             )
+
         # filter by high schools if selected
         if data.get('highschools'):
             registrations = registrations.filter(
@@ -505,6 +506,7 @@ class RegistrationsInvoiceForm(forms.Form):
 
             highschools[record.student.highschool.id].append(record)
         
+        num_invoices = len(highschools)
         for hsid, records in highschools.items():
         
             description = Template(data.get('description'))
@@ -666,7 +668,7 @@ class RegistrationsInvoiceForm(forms.Form):
                     }
                 )
                 header_item.save()
-        return
+        return num_invoices
 
 class InvoiceTemplateForm(forms.ModelForm):
 
