@@ -109,6 +109,26 @@ class Invoice(models.Model):
     class Meta:
         ordering = ['number']
 
+    def add_note(self, createdby=None, note='', meta=None):
+        if not createdby:
+            createdby = CustomUser.objects.get(
+                username='cron'
+            )
+
+        note = InvoiceNote(
+            createdby=createdby,
+            note=note,
+            invoice=self
+        )
+
+        if not meta:
+            meta = {'type': 'private'}
+
+        note.meta = meta
+        note.save()
+
+        return note
+    
     @property
     def tracking_url(self):
         from cis.utils import getDomain
@@ -299,7 +319,7 @@ class Invoice(models.Model):
     def formatted_amount(self):
         if self.total_amount is None:
             return ""
-        return f"${self.total_amount:.2f}"
+        return f"${self.total_amount:,.2f}"
     
     def update_total(self):
         total = self.invoiceitem_set.all().aggregate(total=Sum('amount'))
@@ -413,4 +433,4 @@ class InvoiceItem(models.Model):
         if self.amount is None:
             return ""
         
-        return f"${self.amount:.2f}"
+        return f"${self.amount:,.2f}"

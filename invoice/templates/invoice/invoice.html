@@ -145,6 +145,16 @@
         var record_bulk_action = "{% url 'invoice:bulk_action' %}";
 
         var record_id = "{{record.id}}";
+
+        function refreshTable() {
+            var selectedRows = table.rows({ selected: true });
+
+            selectedRows.deselect();
+
+            table.ajax.reload(null, false);
+            tbl_record_notes.ajax.reload(null, false);
+        };
+
     </script>
 
 <script src="{% static 'js/invoice.js' %}"></script>

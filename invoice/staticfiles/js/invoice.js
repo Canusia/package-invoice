@@ -1,14 +1,3 @@
-
-
-window.refreshTable = function () {
-    var selectedRows = table.rows({ selected: true });
-
-    selectedRows.deselect();
-
-    table.ajax.reload(null, false);
-    tbl_record_notes.ajax.reload(null, false);
-};
-
 function do_action(action, id) {
 
     let data = {

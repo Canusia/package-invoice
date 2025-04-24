@@ -118,6 +118,10 @@ def detail(request, record_id):
             if form.is_valid():
                 record = form.save()
 
+                record.add_note(
+                    request.user,
+                    f'Updated invoice details.'
+                )
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Successfully updated invoice'
@@ -261,7 +265,7 @@ def edit_line_item(request):
             data = {
                 'status':'success',
                 'message':'Successfully updated record',
-                'action': 'reload_table'
+                'action': 'reload_page'
             }
             return JsonResponse(data)
         else:

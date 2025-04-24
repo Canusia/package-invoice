@@ -559,7 +559,7 @@ class RegistrationsInvoiceForm(forms.Form):
                                 invoice=invoice,
                                 amount=None,
                                 created_by = request.user,
-                                description=f'Total for {previous_item} - {total_number} classes ${total_amount:.2f}',
+                                description=f'Total for {previous_item} - {total_number} classes ${total_amount:,.2f}',
                                 weight=weight,
                                 meta={
                                     'summary': 'true',
@@ -600,12 +600,12 @@ class RegistrationsInvoiceForm(forms.Form):
                                 invoice=invoice,
                                 amount=None,
                                 created_by = request.user,
-                                description=f'Total for {previous_item} - {total_number} students ${total_amount:.2f}',
+                                description=f'Total for {previous_item} - {total_number} students ${total_amount:,.2f}',
                                 weight=weight,
                                 meta={
                                     'summary': 'true',
                                     'col1': f'Total for {previous_item} - {total_number} students',
-                                    'col2': f"${total_amount:.2f}",
+                                    'col2': f"${total_amount:,.2f}",
                                 }
                             )
                             header_item.save()
@@ -643,12 +643,12 @@ class RegistrationsInvoiceForm(forms.Form):
                     invoice=invoice,
                     amount=None,
                     created_by = request.user,
-                    description=f'Total for {previous_item} - {total_number} classes ${total_amount:.2f}',
+                    description=f'Total for {previous_item} - {total_number} classes ${total_amount:,.2f}',
                     weight=weight,
                     meta={
                         'summary': 'true',
                         'col1': f'Total for {previous_item} - {total_number} classes',
-                        'col2': f"${total_amount:.2f}",
+                        'col2': f"${total_amount:,.2f}",
                     }
                 )
                 header_item.save()
@@ -657,12 +657,12 @@ class RegistrationsInvoiceForm(forms.Form):
                     invoice=invoice,
                     amount=None,
                     created_by = request.user,
-                    description=f'Total for {previous_item} - {total_number} students ${total_amount:.2f}',
+                    description=f'Total for {previous_item} - {total_number} students ${total_amount:,.2f}',
                     weight=weight,
                     meta={
                         'summary': 'true',
                         'col1': f'Total for {previous_item} - {total_number} students',
-                        'col2': f"${total_amount:.2f}",
+                        'col2': f"${total_amount:,.2f}",
                     }
                 )
                 header_item.save()
