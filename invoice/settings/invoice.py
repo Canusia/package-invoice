@@ -60,7 +60,7 @@ class SettingForm(forms.Form):
             
             self.fields[f"status_change_{k}_email"] = forms.CharField(
                         widget=forms.Textarea,
-                        help_text='Message. Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}.',
+                        help_text='Message. Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{billing_contact_email}}, {{billing_contact_name}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}.',
                         required=False,
                         label=f'\'{v}\' Message Email'
                     )

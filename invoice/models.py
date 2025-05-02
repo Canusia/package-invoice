@@ -153,7 +153,10 @@ class Invoice(models.Model):
 
         context = {
             'invoice_due_date': record.due_date.strftime('%m/%d/%Y'),
+            'invoice_date': record.due_date.strftime('%m/%d/%Y'),
             'invoice_amount': record.formatted_amount,
+            'billing_contact_email': record.billing_contact_email,
+            'billing_contact_name': record.billing_contact,
             'invoice_number': record.number,
             'invoice_term': record.term.label,
             'invoice_status': record.status,
@@ -229,7 +232,10 @@ class Invoice(models.Model):
         invoice_template = Template(record.template.description)
         context = {
             'invoice_due_date': record.due_date.strftime('%m/%d/%Y'),
+            'invoice_date': record.due_date.strftime('%m/%d/%Y'),
             'invoice_amount': record.formatted_amount,
+            'billing_contact_email': record.billing_contact_email,
+            'billing_contact_name': record.billing_contact,
             'invoice_number': record.number,
             'invoice_term': record.term.label,
             'invoice_status': record.status,
@@ -254,14 +260,16 @@ class Invoice(models.Model):
     def billing_contact(self):
         from cis.models.highschool_administrator import HSAdministratorPosition
         primary_contact = HSAdministratorPosition.objects.filter(
-            position__id=self.meta.get('billing_contact_id')
+            position__id=self.meta.get('billing_contact_id'),
+            highschool=self.highschool
         )
 
         if primary_contact:
             return f"{primary_contact[0].hsadmin.user.first_name} {primary_contact[0].hsadmin.user.last_name}"
         else:
             primary_contact = HSAdministratorPosition.objects.filter(
-                position__id=self.meta.get('alt_billing_contact_id')
+                position__id=self.meta.get('alt_billing_contact_id'),
+                highschool=self.highschool
             )
 
         if primary_contact:
@@ -273,14 +281,16 @@ class Invoice(models.Model):
     def billing_contact_email(self):
         from cis.models.highschool_administrator import HSAdministratorPosition
         primary_contact = HSAdministratorPosition.objects.filter(
-            position__id=self.meta.get('billing_contact_id')
+            position__id=self.meta.get('billing_contact_id'),
+            highschool=self.highschool
         )
 
         if primary_contact:
             return primary_contact[0].hsadmin.user.email
         else:
             primary_contact = HSAdministratorPosition.objects.filter(
-                position__id=self.meta.get('alt_billing_contact_id')
+                position__id=self.meta.get('alt_billing_contact_id'),
+                highschool=self.highschool
             )
 
         if primary_contact:

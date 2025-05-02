@@ -374,7 +374,7 @@ class RegistrationsInvoiceForm(forms.Form):
     highschools = forms.ModelMultipleChoiceField(
         queryset=None,
         required=False,
-        label='High School(s)'
+        label='Class Section High School(s)'
     )
 
     registration_status = forms.MultipleChoiceField(
@@ -483,10 +483,11 @@ class RegistrationsInvoiceForm(forms.Form):
             registrations = registrations.filter(
                 class_section__course__in=data.get('courses')
             )
+
         # filter by high schools if selected
         if data.get('highschools'):
             registrations = registrations.filter(
-                student__highschool__in=data.get('highschools')
+                class_section__highschool__in=data.get('highschools')
             )
         
         if data.get('line_item_grouping') == 'by_student':
@@ -584,14 +585,14 @@ class RegistrationsInvoiceForm(forms.Form):
                         weight += 1
 
 
-                    item.description = f'{record.class_section.term}, {record.class_section.course.name}'
+                    item.description = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     previous_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
                     total_number += 1
                     total_amount += item.amount
                 else:
-                    current_item = f'{record.class_section.term}, {record.class_section.course.name}'
+                    current_item = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     if current_item != previous_item:
 
@@ -627,7 +628,7 @@ class RegistrationsInvoiceForm(forms.Form):
 
                     item.description = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
-                    previous_item = f'{record.class_section.term}, {record.class_section.course.name}'
+                    previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     total_number += 1
                     total_amount += item.amount
@@ -675,7 +676,7 @@ class InvoiceTemplateForm(forms.ModelForm):
         fields = '__all__'
 
         help_texts = {
-            'description': 'Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}'
+            'description': 'Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}, {{invoice_date}}, {{billing_contact_email}}, {{billing_contact_name}}',
         }
 
 class EmailForm(forms.Form):
