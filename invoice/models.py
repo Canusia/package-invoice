@@ -135,7 +135,6 @@ class Invoice(models.Model):
         url = getDomain() + reverse_lazy('invoice:track_email') + f"?invoice={self.id}&date=" + datetime.datetime.now().strftime('%Y-%m-%d')
 
         img = f'<img src="{url}" width="1" height="1" style="display:none;" alt=""/>'
-
         return img
     
     @property

@@ -367,7 +367,6 @@ def add_new_item(request):
     return render(request, template, context)
 
 def track_email(request):
-    print(request.GET)
     invoice_id = request.GET.get('invoice')
     date = request.GET.get('date')
 
@@ -390,7 +389,6 @@ def track_email(request):
         content_type="image/gif"
     )
     return response
-
 track_email.login_required=False
 
 def send_email(request):
