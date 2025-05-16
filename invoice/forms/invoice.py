@@ -396,6 +396,15 @@ class RegistrationsInvoiceForm(forms.Form):
         ]
     )
 
+    bill_to = forms.ChoiceField(
+        label='Bill To',
+        required=True,
+        choices=[
+            ('class_section_highschool', 'Class Section High School'),
+            ('student_highschool', 'Student High School')
+        ]
+    )
+
     line_item_grouping = forms.ChoiceField(
         choices=[
             ('', 'Select Line Item Grouping'),
@@ -501,10 +510,16 @@ class RegistrationsInvoiceForm(forms.Form):
 
         highschools = {}
         for record in registrations:
-            if not highschools.get(record.student.highschool.id):
-                highschools[record.student.highschool.id] = []
+            if data.get('bill_to') == 'student_highschool':
+                if not highschools.get(record.student.highschool.id):
+                    highschools[record.student.highschool.id] = []
 
-            highschools[record.student.highschool.id].append(record)
+                highschools[record.student.highschool.id].append(record)
+            else:
+                if not highschools.get(record.class_section.highschool.id):
+                    highschools[record.class_section.highschool.id] = []
+
+                highschools[record.class_section.highschool.id].append(record)
         
         for hsid, records in highschools.items():
         
