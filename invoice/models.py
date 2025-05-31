@@ -176,6 +176,17 @@ class Invoice(models.Model):
         if configs.get('is_active') == 'Debug':
             to = configs.get('debug_list', 'kadaji@gmail.com').split(',')
 
+        if configs.get('notification_cc_list'):
+            cc_list = configs.get('notification_cc_list', '').split(',')
+            for email in cc_list:
+                try:
+                    # validate email
+                    from django.core.validators import validate_email
+                    validate_email(email.strip())
+                    to.append(email.strip())
+                except Exception as e:
+                    continue
+
         template = get_template('cis/email.html')
         html_body = template.render({
             'message': text_message,
