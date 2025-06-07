@@ -41,7 +41,7 @@
                             <div class="row">
                                 <div class="col-8">
 
-                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_item">
+                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_registration_invoice">
                                         <div id="frm_add_new_item">
                                             {% csrf_token %}
                                             {{ import_from_registrations | crispy }}
@@ -79,7 +79,7 @@
                             <div class="row">
                                 <div class="col-8">
 
-                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_item">
+                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_event_invoice">
                                         <div id="frm_add_new_item">
                                             {% csrf_token %}
                                             {{ import_from_event | crispy }}

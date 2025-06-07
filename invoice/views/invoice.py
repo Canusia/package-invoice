@@ -528,7 +528,7 @@ def index(request):
         """
         Add New
         """
-        if request.POST.get('action') == 'import_from_event':
+        if request.POST.get('action') == 'event_invoice':
             form = EventInvoiceForm(
                 request=request,
                 data=request.POST

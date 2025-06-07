@@ -7,8 +7,8 @@ jQuery(document).ready(function ($) {
         // $(blocked_element).block();
         event.preventDefault()
 
-        form = $(this)
-
+        // form = $(this)
+        form = $(event.target);
         if ($("input, select, textarea").hasClass('is-invalid'))
             $("input, select, textarea").removeClass('is-invalid')
 
@@ -20,6 +20,8 @@ jQuery(document).ready(function ($) {
 
         let form_id = $(form).attr("id")
         var formData = new FormData(document.getElementById(form_id))
+        // console.log(formData)
+        // return false;
 
         $.post({
             url: action,
