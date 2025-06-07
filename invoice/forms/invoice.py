@@ -348,7 +348,7 @@ class EventInvoiceForm(forms.Form):
                 
                 item.save()
 
-        return invoice
+        return
 
 
 class RegistrationsInvoiceForm(forms.Form):
