@@ -35,6 +35,14 @@ from ..models import Invoice, InvoiceItem, InvoiceTemplate, InvoiceNote
 
 from ..settings.invoice import invoice as InvoiceSettings
 
+if getattr(settings, 'DEBUG'):
+    try:
+        from pd_event.pd_event.models import Event
+    except:
+        from pd_event.models import Event
+else:
+    from pd_event.models import Event
+    
 class InvoiceChangeStatusForm(forms.Form):
     ids = forms.MultipleChoiceField(
         required=False,
@@ -214,7 +222,7 @@ class EventInvoiceForm(forms.Form):
         initial='event_invoice'
     )
 
-    event = forms.ModelChoiceField(
+    event = forms.ModelMultipleChoiceField(
         queryset=None,
         required=True
     )
@@ -226,7 +234,9 @@ class EventInvoiceForm(forms.Form):
     )
 
     cost_per_attendee = forms.FloatField(
-        label='Cost Per Attendee'
+        label='Cost Per Attendee',
+        required=False,
+        help_text='Leave blank if cost is entered in the event details'
     )
     
     due_date = forms.DateField(
@@ -257,22 +267,14 @@ class EventInvoiceForm(forms.Form):
     description = forms.CharField(
         widget=forms.Textarea,
         label='Invoice Description',
-        help_text='Customize with {{highschool_name}}, {{event_term}}, {{event_type}}, {{event_date}}, {{event_course}}'
+        help_text='Customize with {{highschool_name}}'
     )
 
     def __init__(self, request, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        if getattr(settings, 'DEBUG'):
-            try:
-                from pd_event.pd_event.models import Event
-            except:
-                from pd_event.models import Event
-        else:
-            from pd_event.models import Event
-
         self.fields['term'].queryset = Term.objects.all().order_by('-code')
-        self.fields['event'].queryset = Event.objects.all().order_by('-start_time')
+        self.fields['event'].queryset = Event.objects.all().order_by('-term__code', '-start_time')
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
         self.fields['alt_billing_contact'].queryset = HSPosition.objects.all().order_by('name')
 
@@ -289,32 +291,48 @@ class EventInvoiceForm(forms.Form):
         data = self.cleaned_data
 
         term = data.get('term')
-        event = data.get('event')
-
-        attendees = event.marked_as_attended
+        events = data.get('event')
 
         highschools = {}
-        for attendee in attendees:
-            if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):
-                highschools[attendee.course_certificate.teacher_highschool.highschool.id] = {
-                    'teachers': []
-                }
+        for event in events:
+            
+            attendees = event.marked_as_attended
 
-            highschools[attendee.course_certificate.teacher_highschool.highschool.id]['teachers'].append(
-                f"{attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
-            )
-        
-        for hsid, teachers in highschools.items():
+            for attendee in attendees:
+                if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):
+                    highschools[attendee.course_certificate.teacher_highschool.highschool.id] = {
+                        "events": []
+                    }
+
+                # if not highschools.get(event.id):
+                #     highschools[event.id] = []
+
+                if not highschools.get(
+                    attendee.course_certificate.teacher_highschool.highschool.id
+                ).get(event.id):
+                    highschools[
+                        attendee.course_certificate.teacher_highschool.highschool.id
+                    ][event.id] = {
+                        'teachers': []
+                    }
+
+                highschools[attendee.course_certificate.teacher_highschool.highschool.id][event.id]['teachers'].append(
+                    f"{event.event_type.name} / {event.sexy_courses} / {attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
+                )
+                # print(f"{attendee.course_certificate.teacher_highschool.teacher.user.last_name}")
+             
+        # print(len(highschools))
+        for hsid, events in highschools.items():
         
             description = Template(data.get('description'))
             highschool = HighSchool.objects.get(pk=hsid)
 
             context = Context({
-                'highschool_name': highschool.name,
-                'event_type': event.event_type.name,
-                'event_term': event.term.label,
-                'event_date': event.start_time.strftime('%m/%d/%Y'),
-                'event_course': event.sexy_courses
+                'highschool_name': highschool.name
+                # 'event_type': event.event_type.name,
+                # 'event_term': event.term.label,
+                # 'event_date': event.start_time.strftime('%m/%d/%Y'),
+                # 'event_course': event.sexy_courses
             })
 
             description = description.render(context)
@@ -337,16 +355,23 @@ class EventInvoiceForm(forms.Form):
 
             invoice.save()
 
-            for teacher in teachers['teachers']:
-                item = InvoiceItem(
-                    invoice=invoice
-                )
-                
-                item.amount = data.get('cost_per_attendee')
-                item.description = teacher
-                item.created_by = request.user
-                
-                item.save()
+            for event_id, teachers in events:
+                event = Event.objects.get(pk=event_id)
+
+                for teacher in teachers['teachers']:
+                    item = InvoiceItem(
+                        invoice=invoice
+                    )
+                    
+                    if data.get('cost_per_attendee'):
+                        item.amount = data.get('cost_per_attendee')
+                    else:
+                        item.amount = event.cost_per_attendee if event.cost_per_attendee else 1000
+
+                    item.description = teacher
+                    item.created_by = request.user
+                    
+                    item.save()
 
         return
 
