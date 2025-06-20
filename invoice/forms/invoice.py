@@ -355,7 +355,7 @@ class EventInvoiceForm(forms.Form):
 
             invoice.save()
 
-            for event_id, teachers in pd_events.items():
+            for event_id, teachers in pd_events['events'].items():
                 event = Event.objects.get(pk=event_id)
 
                 for teacher in teachers['teachers']:
