@@ -322,7 +322,7 @@ class EventInvoiceForm(forms.Form):
                 # print(f"{attendee.course_certificate.teacher_highschool.teacher.user.last_name}")
              
         # print(len(highschools))
-        for hsid, events in highschools.items():
+        for hsid, pd_events in highschools.items():
         
             description = Template(data.get('description'))
             highschool = HighSchool.objects.get(pk=hsid)
@@ -355,7 +355,7 @@ class EventInvoiceForm(forms.Form):
 
             invoice.save()
 
-            for event_id, teachers in events:
+            for event_id, teachers in pd_events.items():
                 event = Event.objects.get(pk=event_id)
 
                 for teacher in teachers['teachers']:
