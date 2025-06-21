@@ -301,27 +301,23 @@ class EventInvoiceForm(forms.Form):
             for attendee in attendees:
                 if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):
                     highschools[attendee.course_certificate.teacher_highschool.highschool.id] = {
-                        "events": []
+                        "events": {}
                     }
-
-                # if not highschools.get(event.id):
-                #     highschools[event.id] = []
 
                 if not highschools.get(
                     attendee.course_certificate.teacher_highschool.highschool.id
-                ).get(event.id):
+                )['events'].get(event.id):
                     highschools[
                         attendee.course_certificate.teacher_highschool.highschool.id
-                    ][event.id] = {
+                    ]['events'][event.id] = {
                         'teachers': []
                     }
 
-                highschools[attendee.course_certificate.teacher_highschool.highschool.id][event.id]['teachers'].append(
+                highschools[attendee.course_certificate.teacher_highschool.highschool.id]['events'][event.id]['teachers'].append(
                     f"{event.event_type.name} / {event.sexy_courses} / {attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
                 )
                 # print(f"{attendee.course_certificate.teacher_highschool.teacher.user.last_name}")
              
-        # print(len(highschools))
         for hsid, pd_events in highschools.items():
         
             description = Template(data.get('description'))
