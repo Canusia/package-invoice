@@ -290,6 +290,13 @@ class EventInvoiceForm(forms.Form):
         label='Invoice Term'
     )
 
+    highschool = forms.ModelChoiceField(
+        queryset=HighSchool.objects.all(),
+        required=False,
+        label='High School',
+        help_text='If you need to generate invoice for a single high school'
+    )
+
     cost_per_attendee = forms.FloatField(
         label='Cost Per Attendee',
         required=False,
@@ -356,6 +363,9 @@ class EventInvoiceForm(forms.Form):
             attendees = event.marked_as_attended
 
             for attendee in attendees:
+                if data.get('highschool') and data.get('highschool') != attendee.course_certificate.teacher_highschool.highschool.id:
+                    continue
+                
                 if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):
                     highschools[attendee.course_certificate.teacher_highschool.highschool.id] = {
                         "events": {}

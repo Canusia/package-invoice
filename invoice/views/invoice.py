@@ -268,7 +268,8 @@ def edit_line_item(request):
             data = {
                 'status':'success',
                 'message':'Successfully updated record',
-                'action': 'reload_page'
+                'action': 'reload_table'
+                # 'action': 'refresh_invoice_line_item'
             }
             return JsonResponse(data)
         else:

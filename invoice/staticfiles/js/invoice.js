@@ -20,9 +20,8 @@ function do_action(action, id) {
     });
 }
 
-
-
 $('form.frm_ajax').submit(function(event) {
+
 
     var blocked_element = $(this).parent()
     $(blocked_element).block();
@@ -72,6 +71,7 @@ $('form.frm_ajax').submit(function(event) {
             $(blocked_element).unblock();
         },
         success: function(response) {
+            alert('2')            
             swal({
                 title: 'Success',
                 text: response.message,
@@ -80,6 +80,10 @@ $('form.frm_ajax').submit(function(event) {
                 (value) => {
                     if(response.action == 'reload')
                         location.reload();
+                    if(response.action == 'refresh') {
+                        table.ajax.reload()
+                    }
+
                 }
             )
             $(blocked_element).unblock();
