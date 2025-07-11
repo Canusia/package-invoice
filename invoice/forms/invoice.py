@@ -110,6 +110,63 @@ class InvoiceChangeStatusForm(forms.Form):
             except Exception as e:
                 print(e)
 
+class InvoiceDeleteForm(forms.Form):
+    ids = forms.MultipleChoiceField(
+        required=False,
+        label='Records to Delete',
+        widget=forms.CheckboxSelectMultiple,
+        choices=[]
+    )
+
+    action = forms.CharField(
+        widget=forms.HiddenInput
+    )
+
+    def __init__(self, ids=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        configs = InvoiceSettings.from_db()
+
+        self.fields['action'].initial = kwargs.get('action', 'delete_selected')
+        if ids:
+            invoices = Invoice.objects.filter(
+                id__in=ids
+            )
+
+            invoice_choices = []
+            for invoice in invoices:
+                invoice_choices.append(
+                    (
+                        invoice.id,
+                        f"{invoice.number} ({invoice.status})"
+                    )
+                )
+            self.fields['ids'].choices = invoice_choices
+            self.fields['ids'].initial = ids
+        else:
+            invoice_choices = []
+            for regis_id in kwargs.get('data').getlist('ids'):
+                invoice_choices.append(
+                    (regis_id, regis_id)
+                )
+
+            self.fields['ids'].choices = invoice_choices
+            self.fields['ids'].required = False
+
+    def save(self, request=None):
+        data = self.cleaned_data
+
+        for regis_id in data.get('ids'):
+            try:
+                record = Invoice.objects.get(
+                    id=regis_id
+                )
+
+                record.invoiceitem_set.all().delete()
+                record.delete()
+            except Exception as e:
+                print(e)
+
 class EditLineItemForm(forms.Form):
     line_item_id = forms.CharField(
         widget=forms.HiddenInput
