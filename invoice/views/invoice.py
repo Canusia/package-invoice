@@ -239,6 +239,9 @@ def do_bulk_action(request):
     if action == 'update_status':
         return update_status(request)
 
+    if action == 'delete_selected':
+        return delete_selected(request)
+
 
     data = {
         'status': 'success',
@@ -317,6 +320,40 @@ def update_status(request):
     form = InvoiceChangeStatusForm(ids)
     context = {
         'title': 'Change Status',
+        'message': '',
+        'form': form
+    }
+    
+    return render(request, template, context)
+
+def delete_selected(request):
+    template = 'invoice/bulk_action.html'
+    from ..forms.invoice import InvoiceDeleteForm
+    if request.method == 'POST':
+
+        form = InvoiceDeleteForm(data=request.POST)
+
+        if form.is_valid():
+            status = form.save()
+
+            data = {
+                'status':'success',
+                'message':'Successfully removed records',
+                'action': 'reload_table'
+            }
+            return JsonResponse(data)
+        else:
+            data = {
+                'status':'error',
+                'message':'Please correct the errors and try again.',
+                'errors': form.errors.as_json()
+            }
+        return JsonResponse(data, status=400)
+
+    ids = request.GET.getlist('ids[]')
+    form = InvoiceDeleteForm(ids)
+    context = {
+        'title': 'Confirm Delete',
         'message': '',
         'form': form
     }
