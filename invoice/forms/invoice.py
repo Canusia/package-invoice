@@ -314,7 +314,7 @@ class EventInvoiceForm(forms.Form):
                     }
 
                 highschools[attendee.course_certificate.teacher_highschool.highschool.id]['events'][event.id]['teachers'].append(
-                    f"{event.event_type.name} / {event.sexy_courses} / {attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
+                    f"{event.event_type.name} / {attendee.course_certificate.course.title} / {attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
                 )
                 # print(f"{attendee.course_certificate.teacher_highschool.teacher.user.last_name}")
              
