@@ -1,4 +1,6 @@
 import datetime, os, logging, csv
+import json
+import pdfkit
 
 from django.conf import settings
 from django.contrib import messages
@@ -7,6 +9,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone
+
+
+from django.http import HttpResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.template.loader import render_to_string
 
 from django.utils.safestring import mark_safe
 
@@ -43,6 +51,10 @@ from ..serializers import (
 from cis.menu import cis_menu, draw_menu, FACULTY_MENU
 
 from cis.utils import CIS_user_only, user_has_faculty_role, FACULTY_user_only
+
+from ..models import InvoiceTemplate, InvoiceItem 
+from cis.models.highschool import HighSchool 
+
 
 class InvoiceNoteViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceNoteSerializer
@@ -539,7 +551,6 @@ def event_info(request):
         
     return JsonResponse({"error": "Event not found"}, status=404)
 
-
 def as_pdf(request, record_id):
     from cis.settings.pd_event import pd_event as pd_settings
 
@@ -557,6 +568,57 @@ def as_pdf(request, record_id):
 
     return response
 
+@csrf_exempt
+def live_preview(request, record_id):
+    """
+    Renders a live preview from POST data as HTML or PDF.
+    """
+    if request.method != 'POST':
+        raise Http404
+
+    template_content = request.POST.get('description', '')
+    if not template_content:
+        raise Http404("No template content provided.")
+
+    action = request.POST.get('action', '')
+    
+    sample_data = {
+        'invoice_date': timezone.now().strftime('%m/%d/%Y'),
+        'invoice_number': 'PREVIEW-001',
+        'billing_contact': 'Sample Billing Contact',
+        'school_name': 'Sample High School',
+        'school_address': mark_safe('123 Main St<br>Anytown, USA'),
+        'invoice_description': 'This is a sample invoice description for the preview.',
+        'invoice_amount': '$1,500.00',
+        'line_items': mark_safe('<tr><td>Sample Item 1</td><td>$1000.00</td></tr><tr><td>Sample Item 2</td><td>$500.00</td></tr>'),
+    }
+
+    rendered_html = Template(template_content).render(Context(sample_data))
+
+    if action == 'preview_html':
+        return HttpResponse(rendered_html)
+  
+    elif action == 'preview_pdf':
+        try:
+            header_path = os.path.join(settings.BASE_DIR, 'templates', 'invoice', 'header.html')
+            options = {
+                'page-size': 'Letter',
+                'margin-top': '55mm',
+                'header-html': header_path,
+                'header-spacing': 3,
+            }
+
+            base_template_html = render_to_string('invoice/base.html', {'main_html': rendered_html})
+            pdf = pdfkit.from_string(base_template_html, False, options)
+
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = 'inline; filename="preview.pdf"'
+            return response
+            
+        except ImportError:
+            return HttpResponse(rendered_html, content_type='text/html')
+    
+    return HttpResponse(rendered_html)
 
 def index(request):
     '''

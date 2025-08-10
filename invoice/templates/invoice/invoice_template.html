@@ -97,6 +97,26 @@
                 });
             </script>
 
+            <script>
+                function previewForm(action) {
+                    var form = $('form.frm_ajax');
+                    
+                    form.removeClass('frm_ajax');
+
+                    form.attr('method', 'post');
+                    form.attr('action', "{% url 'invoice:live_preview' record.id %}");
+                    form.attr('target', '_blank');
+
+                    var actionInput = $('<input type="hidden" name="action" value="' + action + '">');
+                    form.append(actionInput);
+
+                    form.get(0).submit();
+
+                    actionInput.remove();
+                    form.addClass('frm_ajax');
+                }
+            </script>
+
             {% if messages %}
             <ul class="messages list-group m-2">
                 {% for message in messages %}
@@ -151,10 +171,20 @@
                                         {{form.media}}
                                         <form action="" method="post" class="frm_ajax">
                                             {% csrf_token %}
-                                            {{ form | crispy }}
-                                            <input type="submit" class="btn btn-primary btn-sm" value="Update">&nbsp;
+                                            {{ form.media }}
+                                            {{ form|crispy }}
                                             
-                                            <!-- <input type="button" value="Delete" class="btn btn-danger btn-sm delete float-right pull-right"> -->
+                                            <input type="hidden" name="record_id" value="{{ record.id }}">
+
+                                            <input type="submit" class="btn btn-primary btn-sm" value="Update" name="action" value="update">&nbsp;
+                                            
+                                            <button type="button" onclick="previewForm('preview_html')" class="btn btn-info btn-sm">
+                                                Preview HTML
+                                            </button>&nbsp;
+
+                                            <button type="button" onclick="previewForm('preview_pdf')" class="btn btn-danger btn-sm">
+                                                Preview PDF
+                                            </button>
                                         </form>
                                     </div>
                                 </div>

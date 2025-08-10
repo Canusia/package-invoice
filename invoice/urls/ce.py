@@ -7,7 +7,7 @@ from ..views.invoice import (
     delete as delete_invoice,
     clone as clone_invoice,
     as_pdf,
-    
+    live_preview,
     delete_line_item,
     event_info,
     
@@ -23,6 +23,7 @@ from ..views.invoice import (
 
     track_email,
 )
+
 from rest_framework import routers
 
 app_name = 'invoice'
@@ -62,4 +63,8 @@ urlpatterns = [
     path('invoice_template/<uuid:record_id>', invoice_template, name='invoice_template'),
 
     path('invoice/tracker/', track_email, name='track_email'),
+    path('invoice/as_pdf/<uuid:record_id>/', as_pdf, name='invoice_as_pdf'),
+    path('invoice_template/live_preview/<uuid:record_id>/', live_preview, name='live_preview'),
+    
+    
 ]
