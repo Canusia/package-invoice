@@ -239,6 +239,14 @@ $(document).ready(function () {
                 },
                 {
                     className: 'btn btn-sm btn-primary text-white text-light',
+                    text: '<i class="fas fa-edit text-white"></i>&nbsp;Send Email',
+                    titleAttr: 'Send Email',
+                    action: function ( e, dt, node, config ) {
+                        do_bulk_action('send_email', dt)
+                    }
+                },
+                {
+                    className: 'btn btn-sm btn-primary text-white text-light',
                     text: '<i class="fas fa-trash text-white"></i>&nbsp;Delete Selected',
                     titleAttr: 'Delete Selected',
                     action: function ( e, dt, node, config ) {

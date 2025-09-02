@@ -250,6 +250,9 @@ def do_bulk_action(request):
     
     if action == 'update_status':
         return update_status(request)
+    
+    if action == 'send_email':
+        return send_email(request)
 
     if action == 'delete_selected':
         return delete_selected(request)
@@ -335,6 +338,24 @@ def update_status(request):
         'title': 'Change Status',
         'message': '',
         'form': form
+    }
+    
+    return render(request, template, context)
+
+def send_email(request):
+    template = 'invoice/bulk_action.html'
+
+    ids = request.GET.getlist('ids[]')
+    invoices = Invoice.objects.filter(
+        id__in=ids
+    )
+    for invoice in invoices:
+        invoice.send_notification()
+        invoice.add_note(None, 'Sent email')
+        
+    context = {
+        'title': 'Send Email',
+        'message': 'Successfully sent email'
     }
     
     return render(request, template, context)
