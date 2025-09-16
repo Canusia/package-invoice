@@ -363,7 +363,7 @@ class EventInvoiceForm(forms.Form):
             attendees = event.marked_as_attended
 
             for attendee in attendees:
-                if data.get('highschool') and data.get('highschool') != attendee.course_certificate.teacher_highschool.highschool.id:
+                if data.get('highschool') and data.get('highschool').id != attendee.course_certificate.teacher_highschool.highschool.id:
                     continue
                 
                 if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):

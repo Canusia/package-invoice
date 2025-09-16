@@ -58,7 +58,7 @@ jQuery(document).ready(function ($) {
                 $(blocked_element).unblock();
             },
             success: function (response) {
-                alert('2')
+                // alert('2')
                 swal({
                     title: 'Success',
                     text: response.message,
