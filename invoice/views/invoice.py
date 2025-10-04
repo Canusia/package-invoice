@@ -39,6 +39,7 @@ from ..forms.invoice import (
     EventInvoiceForm, InvoiceForm, InvoiceTemplateForm, InvoiceNoteForm,
     EmailForm,
     RegistrationsInvoiceForm,
+    ApplyDEInvoiceForm,
     InvoiceChangeStatusForm
 )
 
@@ -689,6 +690,26 @@ def index(request):
                     'message': 'Please correct the errors and try again',
                     'errors': form.errors.as_json()
                 }, status=400)
+        elif request.POST.get('action') == 'applyde_registrations_invoice':
+            form = ApplyDEInvoiceForm(
+                request=request,
+                data=request.POST
+            )
+
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
+
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
 
     menu = draw_menu(cis_menu, 'invoice', 'all', 'ce')
     urls = {
@@ -707,6 +728,7 @@ def index(request):
             'menu': menu,
             'import_from_event': EventInvoiceForm(request),
             'import_from_registrations': RegistrationsInvoiceForm(request),
+            'import_from_apply_de': ApplyDEInvoiceForm(request),
             'terms': Term.objects.all().order_by('-code'),
             'api_url': '/ce/invoices/api/invoices?format=datatables'
         }

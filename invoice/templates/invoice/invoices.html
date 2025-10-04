@@ -23,6 +23,9 @@
                           <a class="dropdown-item collapsed" data-toggle="collapse" href="#addNewItem_Registrations"
                           role="button" aria-expanded="false" aria-controls="multiCollapseExample1"><i
                               class="fa fa-plus"></i>&nbsp;Create From Registrations</a>
+                          <a class="dropdown-item collapsed" data-toggle="collapse" href="#addNewItem_ApplyDERegistrations"
+                          role="button" aria-expanded="false" aria-controls="multiCollapseExample1"><i
+                              class="fa fa-plus"></i>&nbsp;Create From ApplyDE Registrations</a>
                         </div>
                     </div>
                 </h1>
@@ -45,6 +48,43 @@
                                         <div id="frm_add_new_item">
                                             {% csrf_token %}
                                             {{ import_from_registrations | crispy }}
+                                        </div>
+                                        <input type="submit" class="btn btn-primary btn-sm" value="Create Invoice(s) &raquo;">
+                                    </form>
+
+                                </div>
+
+                                <div class="col-4">
+                                    <table class="table d-none" id="event_details" >
+                                        <tr>
+                                            <td><h3>Total Attended</h3></td>
+                                            <td>
+                                                <h3 id="event_info">< Select Event > </h3>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>High School(s)</td>
+                                            <td><div id="highschool_info"></div></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="collapse multi-collapse" id="addNewItem_ApplyDERegistrations">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Create From ApplyDE Registration</h4>
+                            {{ import_from_apply_de.media }}
+                            <div class="row">
+                                <div class="col-8">
+
+                                    <form action="" method="post" class="frm_ajax" id="frm_add_new_applyde_registration_invoice">
+                                        <div id="frm_add_new_item">
+                                            {% csrf_token %}
+                                            {{ import_from_apply_de | crispy }}
                                         </div>
                                         <input type="submit" class="btn btn-primary btn-sm" value="Create Invoice(s) &raquo;">
                                     </form>
