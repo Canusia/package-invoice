@@ -31,6 +31,7 @@ from cis.models.highschool_administrator import HSPosition
 
 from cis.validators import validate_email_list
 from cis.utils import YES_NO_OPTIONS
+# from cis.models.section import StudentRegistration
 from ..models import Invoice, InvoiceItem, InvoiceTemplate, InvoiceNote
 
 from ..settings.invoice import invoice as InvoiceSettings
@@ -806,6 +807,13 @@ class RegistrationsInvoiceForm(forms.Form):
         help_text='Select all that apply'
     )
 
+    pay_type = forms.MultipleChoiceField(
+        required=False,
+        label='Pay Type',
+        choices=[('', 'All Pay Types')],
+        widget=forms.CheckboxSelectMultiple
+    )
+    
     cost_model = forms.ChoiceField(
         label='Cost Model',
         required=True,
@@ -879,6 +887,7 @@ class RegistrationsInvoiceForm(forms.Form):
         super().__init__(*args, **kwargs)
 
         from cis.models.course import Course
+        from cis.models.section import StudentRegistration
 
         terms = Term.objects.all().order_by('-code')
         self.fields['term'].queryset = terms
@@ -898,6 +907,9 @@ class RegistrationsInvoiceForm(forms.Form):
         self.helper.form_id = 'frm_event_invoice'
         self.helper.form_method = 'POST'
 
+        if StudentRegistration.PAY_OPTIONS:
+            self.fields['pay_type'].choices = StudentRegistration.PAY_OPTIONS[1:]  # Exclude 'All Pay Types' option
+
     def save(self, request, commit=True):
         from cis.models.section import StudentRegistration
 
@@ -908,6 +920,12 @@ class RegistrationsInvoiceForm(forms.Form):
             class_section__term__in=data.get('class_section_terms'),
             status__in=data.get('registration_status')
         )
+
+        if data.get('pay_type'):
+            registrations = registrations.filter(
+                pay_type__in=data.get('pay_type')
+            )
+
         # filter by courses if selected
         if data.get('courses'):
             registrations = registrations.filter(
@@ -985,7 +1003,17 @@ class RegistrationsInvoiceForm(forms.Form):
                 if data.get('cost_model') == 'cost_per_credit':
                     item.amount = record.class_section.course.credit_hours * record.class_section.term.academic_year.cost_per_credit
                 elif data.get('cost_model') == 'cost_per_section':
-                    item.amount = record.class_section.cost
+                    try:
+                        item.amount = record.class_section.cost
+                    except AttributeError:
+                        item.amount = record.class_section.student_cost
+
+                if data.get('pay_type') and record.pay_type == 'school_partial' and record.pay_type in data.get('pay_type'):
+                    # get only the amount that the high school is responsible for
+                    try:
+                        item.amount = record.non_student_pay_amount
+                    except AttributeError:
+                        item.amount = '999'
 
                 if data.get('line_item_grouping') == 'by_student':
                     current_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
@@ -1021,14 +1049,22 @@ class RegistrationsInvoiceForm(forms.Form):
                         weight += 1
 
 
+                    # try:
+                    #     item.description = record.class_section.invoice_description
+                    # except:
                     item.description = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     previous_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
                     total_number += 1
-                    total_amount += item.amount
+                    total_amount += float(item.amount)
                 else:
-                    current_item = f'{record.class_section.term}, {record.class_section.course.title}'
+
+                    try:
+                        current_item = record.class_section.invoice_description
+                    except:
+                        current_item = f'{record.class_section.term}, {record.class_section.course.title}'
+                    # current_item = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     if current_item != previous_item:
 
@@ -1041,7 +1077,7 @@ class RegistrationsInvoiceForm(forms.Form):
                                 weight=weight,
                                 meta={
                                     'summary': 'true',
-                                    'col1': f'Total for {previous_item} - {total_number} students',
+                                    'col1': f'Total for {previous_item} - {total_number} student(s)',
                                     'col2': f"${total_amount:,.2f}",
                                 }
                             )
@@ -1064,10 +1100,15 @@ class RegistrationsInvoiceForm(forms.Form):
 
                     item.description = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
-                    previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
+
+                    try:
+                        previous_item = record.class_section.invoice_description
+                    except:
+                        previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
+                    # previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     total_number += 1
-                    total_amount += item.amount
+                    total_amount += float(item.amount)
 
                 item.created_by = request.user
                 item.weight = weight
