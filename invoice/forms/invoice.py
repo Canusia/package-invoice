@@ -1006,7 +1006,7 @@ class RegistrationsInvoiceForm(forms.Form):
                     try:
                         item.amount = record.class_section.cost
                     except AttributeError:
-                        item.amount = record.class_section.student_cost
+                        item.amount = record.billed_school_cost
 
                 if data.get('pay_type') and record.pay_type == 'school_partial' and record.pay_type in data.get('pay_type'):
                     # get only the amount that the high school is responsible for
