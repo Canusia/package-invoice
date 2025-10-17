@@ -1011,7 +1011,7 @@ class RegistrationsInvoiceForm(forms.Form):
                 if data.get('pay_type') and record.pay_type == 'school_partial' and record.pay_type in data.get('pay_type'):
                     # get only the amount that the high school is responsible for
                     try:
-                        item.amount = record.non_student_pay_amount
+                        item.amount = record.billed_school_cost
                     except AttributeError:
                         item.amount = '999'
 
