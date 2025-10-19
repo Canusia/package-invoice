@@ -595,6 +595,9 @@ class ApplyDEInvoiceForm(forms.Form):
         # print(registrations)
         highschools = {}
         for record in registrations:
+            if record['status'] not in data.get('registration_status'):
+                continue
+            
             if data.get('bill_to') == 'student_highschool':
                 if not highschools.get(record['student']['highschool']['sau']):
                     highschools[record['student']['highschool']['sau']] = []
