@@ -907,8 +907,11 @@ class RegistrationsInvoiceForm(forms.Form):
         self.helper.form_id = 'frm_event_invoice'
         self.helper.form_method = 'POST'
 
-        if StudentRegistration.PAY_OPTIONS:
-            self.fields['pay_type'].choices = StudentRegistration.PAY_OPTIONS[1:]  # Exclude 'All Pay Types' option
+        try:
+            if StudentRegistration.PAY_OPTIONS:
+                self.fields['pay_type'].choices = StudentRegistration.PAY_OPTIONS[1:]  # Exclude 'All Pay Types' option
+        except AttributeError:
+            pass
 
     def save(self, request, commit=True):
         from cis.models.section import StudentRegistration
@@ -1024,11 +1027,11 @@ class RegistrationsInvoiceForm(forms.Form):
                                 invoice=invoice,
                                 amount=None,
                                 created_by = request.user,
-                                description=f'Total for {previous_item} - {total_number} classes ${total_amount:,.2f}',
+                                description=f'Sub Total ${total_amount:,.2f}',
                                 weight=weight,
                                 meta={
                                     'summary': 'true',
-                                    'col1': f'Total for {previous_item} - {total_number} classes',
+                                    'col1': f'Sub Total',
                                     'col2': f"${total_amount:.2f}",
                                 }
                             )
@@ -1048,36 +1051,28 @@ class RegistrationsInvoiceForm(forms.Form):
                         header_item.save()
                         weight += 1
 
-
-                    # try:
-                    #     item.description = record.class_section.invoice_description
-                    # except:
                     item.description = f'{record.class_section.term}, {record.class_section.course.title}'
-
                     previous_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
                     total_number += 1
                     total_amount += float(item.amount)
                 else:
-
                     try:
                         current_item = record.class_section.invoice_description
                     except:
                         current_item = f'{record.class_section.term}, {record.class_section.course.title}'
-                    # current_item = f'{record.class_section.term}, {record.class_section.course.title}'
 
                     if current_item != previous_item:
-
                         if previous_item != '':
                             header_item = InvoiceItem(
                                 invoice=invoice,
                                 amount=None,
                                 created_by = request.user,
-                                description=f'Total for {previous_item} - {total_number} students ${total_amount:,.2f}',
+                                description=f'Sub Total ${total_amount:,.2f}',
                                 weight=weight,
                                 meta={
                                     'summary': 'true',
-                                    'col1': f'Total for {previous_item} - {total_number} student(s)',
+                                    'col1': f'Sub Total',
                                     'col2': f"${total_amount:,.2f}",
                                 }
                             )
@@ -1153,7 +1148,7 @@ class InvoiceTemplateForm(forms.ModelForm):
         fields = '__all__'
 
         help_texts = {
-            'description': 'Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}, {{invoice_date}}, {{billing_contact_email}}, {{billing_contact_name}}',
+            'description': 'Customize with {{invoice_term}}, {{invoice_amount}}, {{invoice_term}}, {{invoice_due_date}}, {{invoice_status}}, {{school_name}}, {{invoice_description}}, {{invoice_date}}, {{billing_contact_email}}, {{billing_contact_name}}, {{line_items}}',
         }
 
 class EmailForm(forms.Form):
