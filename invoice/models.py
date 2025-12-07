@@ -152,7 +152,7 @@ class Invoice(models.Model):
 
         context = {
             'invoice_due_date': record.due_date.strftime('%m/%d/%Y'),
-            'invoice_date': record.due_date.strftime('%m/%d/%Y'),
+            'invoice_date': record.created_on.strftime('%m/%d/%Y'),
             'invoice_amount': record.formatted_amount,
             'billing_contact_email': record.billing_contact_email,
             'billing_contact_name': record.billing_contact,
