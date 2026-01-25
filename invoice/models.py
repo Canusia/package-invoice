@@ -294,7 +294,8 @@ class Invoice(models.Model):
         from cis.models.highschool_administrator import HSAdministratorPosition
         primary_contact = HSAdministratorPosition.objects.filter(
             position__id=self.meta.get('billing_contact_id'),
-            highschool=self.highschool
+            highschool=self.highschool,
+            status__iexact='active'
         )
 
         if primary_contact:
@@ -302,7 +303,8 @@ class Invoice(models.Model):
         else:
             primary_contact = HSAdministratorPosition.objects.filter(
                 position__id=self.meta.get('alt_billing_contact_id'),
-                highschool=self.highschool
+                highschool=self.highschool,
+                status__iexact='active'
             )
 
         if primary_contact:
