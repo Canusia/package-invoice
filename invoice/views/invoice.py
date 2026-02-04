@@ -1,4 +1,6 @@
 import datetime, os, logging, csv
+import json
+import pdfkit
 
 from django.conf import settings
 from django.contrib import messages
@@ -7,6 +9,12 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.utils import timezone
+
+
+from django.http import HttpResponse, Http404
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+from django.template.loader import render_to_string
 
 from django.utils.safestring import mark_safe
 
@@ -30,6 +38,8 @@ from cis.models.teacher import (
 from ..forms.invoice import (
     EventInvoiceForm, InvoiceForm, InvoiceTemplateForm, InvoiceNoteForm,
     EmailForm,
+    RegistrationsInvoiceForm,
+    ApplyDEInvoiceForm,
     InvoiceChangeStatusForm
 )
 
@@ -42,6 +52,10 @@ from ..serializers import (
 from cis.menu import cis_menu, draw_menu, FACULTY_MENU
 
 from cis.utils import CIS_user_only, user_has_faculty_role, FACULTY_user_only
+
+from ..models import InvoiceTemplate, InvoiceItem 
+from cis.models.highschool import HighSchool 
+
 
 class InvoiceNoteViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceNoteSerializer
@@ -117,6 +131,10 @@ def detail(request, record_id):
             if form.is_valid():
                 record = form.save()
 
+                record.add_note(
+                    request.user,
+                    f'Updated invoice details.'
+                )
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Successfully updated invoice'
@@ -185,7 +203,7 @@ def clone(request, record_id):
 
         data = {
             'status':'success',
-            'message':'Successfully cloned invoice. Click "Okay" to continue.',
+            'message':'Successfully cloned invoice. Click "Ok" to continue.',
             'redirect_url': cloned_record.ce_url
         }
     except Exception as e:
@@ -233,6 +251,12 @@ def do_bulk_action(request):
     
     if action == 'update_status':
         return update_status(request)
+    
+    if action == 'send_email':
+        return send_email(request)
+
+    if action == 'delete_selected':
+        return delete_selected(request)
 
 
     data = {
@@ -261,6 +285,7 @@ def edit_line_item(request):
                 'status':'success',
                 'message':'Successfully updated record',
                 'action': 'reload_table'
+                # 'action': 'refresh_invoice_line_item'
             }
             return JsonResponse(data)
         else:
@@ -275,7 +300,7 @@ def edit_line_item(request):
     record = get_object_or_404(InvoiceItem, pk=ids[0])
     form = EditLineItemForm(record, 'edit_line_item')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Edit Line Item',
         'allow_delete': True,
         'form': form,
@@ -312,7 +337,59 @@ def update_status(request):
     form = InvoiceChangeStatusForm(ids)
     context = {
         'title': 'Change Status',
-        'message': 'Some Message',
+        'message': '',
+        'form': form
+    }
+    
+    return render(request, template, context)
+
+def send_email(request):
+    template = 'invoice/bulk_action.html'
+
+    ids = request.GET.getlist('ids[]')
+    invoices = Invoice.objects.filter(
+        id__in=ids
+    )
+    for invoice in invoices:
+        invoice.send_notification()
+        invoice.add_note(None, 'Sent email')
+        
+    context = {
+        'title': 'Send Email',
+        'message': 'Successfully sent email'
+    }
+    
+    return render(request, template, context)
+
+def delete_selected(request):
+    template = 'invoice/bulk_action.html'
+    from ..forms.invoice import InvoiceDeleteForm
+    if request.method == 'POST':
+
+        form = InvoiceDeleteForm(data=request.POST)
+
+        if form.is_valid():
+            status = form.save()
+
+            data = {
+                'status':'success',
+                'message':'Successfully removed records',
+                'action': 'reload_table'
+            }
+            return JsonResponse(data)
+        else:
+            data = {
+                'status':'error',
+                'message':'Please correct the errors and try again.',
+                'errors': form.errors.as_json()
+            }
+        return JsonResponse(data, status=400)
+
+    ids = request.GET.getlist('ids[]')
+    form = InvoiceDeleteForm(ids)
+    context = {
+        'title': 'Confirm Delete',
+        'message': '',
         'form': form
     }
     
@@ -352,7 +429,7 @@ def add_new_item(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = AddLineItemForm(record, 'add_new_item')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Add New Line Item',
         'allow_delete': False,
         'form': form,
@@ -362,7 +439,6 @@ def add_new_item(request):
     return render(request, template, context)
 
 def track_email(request):
-    print(request.GET)
     invoice_id = request.GET.get('invoice')
     date = request.GET.get('date')
 
@@ -385,7 +461,6 @@ def track_email(request):
         content_type="image/gif"
     )
     return response
-
 track_email.login_required=False
 
 def send_email(request):
@@ -421,7 +496,7 @@ def send_email(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = EmailForm(record, 'send_email')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Send Email',
         'allow_delete': False,
         'form': form,
@@ -463,7 +538,7 @@ def add_new_note(request):
     record = get_object_or_404(Invoice, pk=ids[0])
     form = InvoiceNoteForm(record, 'add_new_note')
     context = {
-        'message': 'Some message',
+        'message': '',
         'title': 'Add New Note',
         'allow_delete': False,
         'form': form,
@@ -498,7 +573,6 @@ def event_info(request):
         
     return JsonResponse({"error": "Event not found"}, status=404)
 
-
 def as_pdf(request, record_id):
     from cis.settings.pd_event import pd_event as pd_settings
 
@@ -516,6 +590,57 @@ def as_pdf(request, record_id):
 
     return response
 
+@csrf_exempt
+def live_preview(request, record_id):
+    """
+    Renders a live preview from POST data as HTML or PDF.
+    """
+    if request.method != 'POST':
+        raise Http404
+
+    template_content = request.POST.get('description', '')
+    if not template_content:
+        raise Http404("No template content provided.")
+
+    action = request.POST.get('action', '')
+    
+    sample_data = {
+        'invoice_date': timezone.now().strftime('%m/%d/%Y'),
+        'invoice_number': 'PREVIEW-001',
+        'billing_contact': 'Sample Billing Contact',
+        'school_name': 'Sample High School',
+        'school_address': mark_safe('123 Main St<br>Anytown, USA'),
+        'invoice_description': 'This is a sample invoice description for the preview.',
+        'invoice_amount': '$1,500.00',
+        'line_items': mark_safe('<tr><td>Sample Item 1</td><td>$1000.00</td></tr><tr><td>Sample Item 2</td><td>$500.00</td></tr>'),
+    }
+
+    rendered_html = Template(template_content).render(Context(sample_data))
+
+    if action == 'preview_html':
+        return HttpResponse(rendered_html)
+  
+    elif action == 'preview_pdf':
+        try:
+            header_path = os.path.join(settings.BASE_DIR, 'templates', 'invoice', 'header.html')
+            options = {
+                'page-size': 'Letter',
+                'margin-top': '55mm',
+                'header-html': header_path,
+                'header-spacing': 3,
+            }
+
+            base_template_html = render_to_string('invoice/base.html', {'main_html': rendered_html})
+            pdf = pdfkit.from_string(base_template_html, False, options)
+
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = 'inline; filename="preview.pdf"'
+            return response
+            
+        except ImportError:
+            return HttpResponse(rendered_html, content_type='text/html')
+    
+    return HttpResponse(rendered_html)
 
 def index(request):
     '''
@@ -525,26 +650,66 @@ def index(request):
         """
         Add New
         """
-        form = EventInvoiceForm(
-            request=request,
-            data=request.POST
-        )
+        if request.POST.get('action') == 'event_invoice':
+            form = EventInvoiceForm(
+                request=request,
+                data=request.POST
+            )
 
-        if form.is_valid():
-            record = form.save(request=request, commit=True)
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
 
-            data = {
-                'status':'success',
-                'message':'Successfully added invoice(s). Click "Okay" to continue.',
-                'action': 'reload'
-            }
-            return JsonResponse(data)
-        else:
-            return JsonResponse({
-                'message': 'Please correct the errors and try again',
-                'errors': form.errors.as_json()
-            }, status=400)
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
+        elif request.POST.get('action') == 'registrations_invoice':
+            form = RegistrationsInvoiceForm(
+                request=request,
+                data=request.POST
+            )
 
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
+
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
+        elif request.POST.get('action') == 'applyde_registrations_invoice':
+            form = ApplyDEInvoiceForm(
+                request=request,
+                data=request.POST
+            )
+
+            if form.is_valid():
+                record = form.save(request=request, commit=True)
+
+                data = {
+                    'status':'success',
+                    'message':'Successfully added invoice(s). Click "Ok" to continue.',
+                    'action': 'reload'
+                }
+                return JsonResponse(data)
+            else:
+                return JsonResponse({
+                    'message': 'Please correct the errors and try again',
+                    'errors': form.errors.as_json()
+                }, status=400)
 
     menu = draw_menu(cis_menu, 'invoice', 'all', 'ce')
     urls = {
@@ -562,6 +727,8 @@ def index(request):
             'urls': urls,
             'menu': menu,
             'import_from_event': EventInvoiceForm(request),
+            'import_from_registrations': RegistrationsInvoiceForm(request),
+            'import_from_apply_de': ApplyDEInvoiceForm(request),
             'terms': Term.objects.all().order_by('-code'),
             'api_url': '/ce/invoices/api/invoices?format=datatables'
         }
@@ -635,7 +802,7 @@ def invoice_templates(request):
 
             data = {
                 'status':'success',
-                'message':'Successfully added template. Click "Okay" to continue.',
+                'message':'Successfully added template. Click "Ok" to continue.',
                 'action': 'reload'
             }
             return JsonResponse(data)

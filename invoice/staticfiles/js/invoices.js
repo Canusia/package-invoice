@@ -7,8 +7,8 @@ jQuery(document).ready(function ($) {
         // $(blocked_element).block();
         event.preventDefault()
 
-        form = $(this)
-
+        // form = $(this)
+        form = $(event.target);
         if ($("input, select, textarea").hasClass('is-invalid'))
             $("input, select, textarea").removeClass('is-invalid')
 
@@ -20,6 +20,8 @@ jQuery(document).ready(function ($) {
 
         let form_id = $(form).attr("id")
         var formData = new FormData(document.getElementById(form_id))
+        // console.log(formData)
+        // return false;
 
         $.post({
             url: action,
@@ -56,6 +58,7 @@ jQuery(document).ready(function ($) {
                 $(blocked_element).unblock();
             },
             success: function (response) {
+                // alert('2')
                 swal({
                     title: 'Success',
                     text: response.message,
@@ -232,6 +235,22 @@ $(document).ready(function () {
                     titleAttr: 'Update Status',
                     action: function ( e, dt, node, config ) {
                         do_bulk_action('update_status', dt)
+                    }
+                },
+                {
+                    className: 'btn btn-sm btn-primary text-white text-light',
+                    text: '<i class="fas fa-edit text-white"></i>&nbsp;Send Email',
+                    titleAttr: 'Send Email',
+                    action: function ( e, dt, node, config ) {
+                        do_bulk_action('send_email', dt)
+                    }
+                },
+                {
+                    className: 'btn btn-sm btn-primary text-white text-light',
+                    text: '<i class="fas fa-trash text-white"></i>&nbsp;Delete Selected',
+                    titleAttr: 'Delete Selected',
+                    action: function ( e, dt, node, config ) {
+                        do_bulk_action('delete_selected', dt)
                     }
                 },
             ],

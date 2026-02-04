@@ -60,7 +60,7 @@ class Invoice(models.Model):
 
     term = models.ForeignKey('cis.Term', on_delete=models.PROTECT)
     
-    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT, default='4851acab-e7ff-497d-864c-a3387257a4aa')
+    template = models.ForeignKey('invoice.InvoiceTemplate', on_delete=models.PROTECT)
 
     due_date = models.DateField(
         verbose_name="Due Date",
@@ -109,12 +109,33 @@ class Invoice(models.Model):
     class Meta:
         ordering = ['number']
 
+    def add_note(self, createdby=None, note='', meta=None):
+        if not createdby:
+            createdby = CustomUser.objects.get(
+                username='cron'
+            )
+
+        note = InvoiceNote(
+            createdby=createdby,
+            note=note,
+            invoice=self
+        )
+
+        if not meta:
+            meta = {'type': 'private'}
+
+        note.meta = meta
+        note.save()
+
+        return note
+    
     @property
     def tracking_url(self):
         from cis.utils import getDomain
         url = getDomain() + reverse_lazy('invoice:track_email') + f"?invoice={self.id}&date=" + datetime.datetime.now().strftime('%Y-%m-%d')
 
-        return url
+        img = f'<img src="{url}" width="1" height="1" style="display:none;" alt=""/>'
+        return img
     
     @property
     def ce_url(self):
@@ -131,7 +152,10 @@ class Invoice(models.Model):
 
         context = {
             'invoice_due_date': record.due_date.strftime('%m/%d/%Y'),
+            'invoice_date': record.created_on.strftime('%m/%d/%Y'),
             'invoice_amount': record.formatted_amount,
+            'billing_contact_email': record.billing_contact_email,
+            'billing_contact_name': record.billing_contact,
             'invoice_number': record.number,
             'invoice_term': record.term.label,
             'invoice_status': record.status,
@@ -151,6 +175,17 @@ class Invoice(models.Model):
 
         if configs.get('is_active') == 'Debug':
             to = configs.get('debug_list', 'kadaji@gmail.com').split(',')
+
+        if configs.get('notification_cc_list'):
+            cc_list = configs.get('notification_cc_list', '').split(',')
+            for email in cc_list:
+                try:
+                    # validate email
+                    from django.core.validators import validate_email
+                    validate_email(email.strip())
+                    to.append(email.strip())
+                except Exception as e:
+                    continue
 
         template = get_template('cis/email.html')
         html_body = template.render({
@@ -188,9 +223,17 @@ class Invoice(models.Model):
 
     def as_pdf(self, mode='pdf'):
         record = self
-
+        import os
+        from django.conf import settings
+        header_path = os.path.join(settings.BASE_DIR, 'templates', 'invoice', 'header.html')
+    
         options = {
-            'page-size': 'Letter'
+            'page-size': 'Letter',
+            'image-quality': 100,
+            'disable-smart-shrinking': '',
+            'margin-top': '55mm',  # Increase top margin to make room for header
+            'header-html': header_path,
+            'header-spacing': 3,   # Space between header and content in mm
         }
 
         base_template = 'invoice/base.html'
@@ -199,7 +242,10 @@ class Invoice(models.Model):
         invoice_template = Template(record.template.description)
         context = {
             'invoice_due_date': record.due_date.strftime('%m/%d/%Y'),
+            'invoice_date': record.due_date.strftime('%m/%d/%Y'),
             'invoice_amount': record.formatted_amount,
+            'billing_contact_email': record.billing_contact_email,
+            'billing_contact_name': record.billing_contact,
             'invoice_number': record.number,
             'invoice_term': record.term.label,
             'invoice_status': record.status,
@@ -224,14 +270,18 @@ class Invoice(models.Model):
     def billing_contact(self):
         from cis.models.highschool_administrator import HSAdministratorPosition
         primary_contact = HSAdministratorPosition.objects.filter(
-            position__id=self.meta.get('billing_contact_id')
+            position__id=self.meta.get('billing_contact_id'),
+            highschool=self.highschool,
+            status__iexact='active'
         )
 
         if primary_contact:
             return f"{primary_contact[0].hsadmin.user.first_name} {primary_contact[0].hsadmin.user.last_name}"
         else:
             primary_contact = HSAdministratorPosition.objects.filter(
-                position__id=self.meta.get('alt_billing_contact_id')
+                position__id=self.meta.get('alt_billing_contact_id'),
+                highschool=self.highschool,
+                status__iexact='active'
             )
 
         if primary_contact:
@@ -243,14 +293,18 @@ class Invoice(models.Model):
     def billing_contact_email(self):
         from cis.models.highschool_administrator import HSAdministratorPosition
         primary_contact = HSAdministratorPosition.objects.filter(
-            position__id=self.meta.get('billing_contact_id')
+            position__id=self.meta.get('billing_contact_id'),
+            highschool=self.highschool,
+            status__iexact='active'
         )
 
         if primary_contact:
             return primary_contact[0].hsadmin.user.email
         else:
             primary_contact = HSAdministratorPosition.objects.filter(
-                position__id=self.meta.get('alt_billing_contact_id')
+                position__id=self.meta.get('alt_billing_contact_id'),
+                highschool=self.highschool,
+                status__iexact='active'
             )
 
         if primary_contact:
@@ -264,7 +318,18 @@ class Invoice(models.Model):
 
         result = ""
         for item in line_items:
-            result += f"<tr><td>{item.description}</td><td>{item.formatted_amount}</td></tr>"
+            if item.meta and item.meta.get('summary') == 'true':
+                result += f"<tr><td style='font-weight: bold;'>{item.meta.get('col1')}</td><td style='font-weight: bold;'>{item.meta.get('col2')}</td></tr>"
+                continue
+
+            result += f"<tr>"
+            result += "<td>"
+
+            if item.meta.get('padding') == 'true':
+                result += "<div style='padding-left: 10px; display: inline-block;'>&nbsp;</div>"
+
+            result += f"{item.description}</td>"
+            result += f"<td>{item.formatted_amount}</td></tr>"
         
         return mark_safe(result)
     
@@ -276,7 +341,9 @@ class Invoice(models.Model):
     
     @property
     def formatted_amount(self):
-        return f"${self.total_amount:.2f}"
+        if self.total_amount is None:
+            return ""
+        return f"${self.total_amount:,.2f}"
     
     def update_total(self):
         total = self.invoiceitem_set.all().aggregate(total=Sum('amount'))
@@ -356,6 +423,11 @@ class InvoiceItem(models.Model):
     created_on = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey('cis.CustomUser', on_delete=models.PROTECT)
     
+    weight = models.IntegerField(
+        default=0,
+        verbose_name='Weight',
+        null=True,
+    )
     invoice = models.ForeignKey('invoice.Invoice', on_delete=models.PROTECT, blank=True, null=True)
 
     description = models.TextField(
@@ -374,7 +446,15 @@ class InvoiceItem(models.Model):
         verbose_name='Amount',
         null=True,
     )
+
+    class Meta:
+        ordering = ['weight']
+        verbose_name = 'Invoice Item'
+        verbose_name_plural = 'Invoice Items'
     
     @property
     def formatted_amount(self):
-        return f"${self.amount:.2f}"
+        if self.amount is None:
+            return ""
+        
+        return f"${self.amount:,.2f}"

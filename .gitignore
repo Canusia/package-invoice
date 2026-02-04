@@ -1,3 +1,11 @@
+_site
+.sass-cache
+.jekyll-cache
+.jekyll-metadata
+vendor
+
+.pyc
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -7,7 +15,8 @@ __pycache__/
 *.so
 
 venv/
-venv3.8/
+
+mods/
 
 # Distribution / packaging
 .Python

@@ -1,14 +1,3 @@
-
-
-window.refreshTable = function () {
-    var selectedRows = table.rows({ selected: true });
-
-    selectedRows.deselect();
-
-    table.ajax.reload(null, false);
-    tbl_record_notes.ajax.reload(null, false);
-};
-
 function do_action(action, id) {
 
     let data = {
@@ -31,9 +20,8 @@ function do_action(action, id) {
     });
 }
 
-
-
 $('form.frm_ajax').submit(function(event) {
+
 
     var blocked_element = $(this).parent()
     $(blocked_element).block();
@@ -83,6 +71,7 @@ $('form.frm_ajax').submit(function(event) {
             $(blocked_element).unblock();
         },
         success: function(response) {
+            alert('2')            
             swal({
                 title: 'Success',
                 text: response.message,
@@ -91,6 +80,10 @@ $('form.frm_ajax').submit(function(event) {
                 (value) => {
                     if(response.action == 'reload')
                         location.reload();
+                    if(response.action == 'refresh') {
+                        table.ajax.reload()
+                    }
+
                 }
             )
             $(blocked_element).unblock();
@@ -234,7 +227,7 @@ jQuery(document).ready(function($) {
                     text: '<i class="fas fa-plus text-white"></i>&nbsp;Add New Item',
                     titleAttr: 'Add New Item',
                     action: function ( e, dt, node, config ) {
-                        do_action('add_new_item', '{{record.id}}')
+                        do_action('add_new_item', record_id);
                     }
                 },
             ],
@@ -244,7 +237,7 @@ jQuery(document).ready(function($) {
             ajax: baseURL,
             serverSide: true,
             processing: true,
-            order: [[1, 'desc']],
+            order: [[1, 'asc']],
             // stateSave: true,
             language: {
                 'loadingRecords': '&nbsp;',
@@ -261,6 +254,14 @@ jQuery(document).ready(function($) {
                 },
                 null,
                 null,
+                {
+                  'render': function (data, type, row, meta) {
+                        if(row.formatted_amount == '$0.00') {
+                            return " ";
+                        }
+                        return row.formatted_amount
+                    }  
+                },
 
                 {
                     'searchable': false,
