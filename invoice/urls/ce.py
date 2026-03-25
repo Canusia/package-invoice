@@ -10,16 +10,18 @@ from ..views.invoice import (
     live_preview,
     delete_line_item,
     event_info,
-    
+
     do_bulk_action,
-    
+
     InvoiceViewSet,
     InvoiceItemViewSet,
     InvoiceTemplateViewSet,
     InvoiceNoteViewSet,
+    InvoiceHistoryViewSet,
 
     invoice_templates,
     invoice_template,
+    invoice_history,
 
     track_email,
 )
@@ -32,9 +34,9 @@ router = routers.DefaultRouter()
 router_viewsets = {
     'invoices': InvoiceViewSet,
     'invoice_items': InvoiceItemViewSet,
-
     'invoice_templates': InvoiceTemplateViewSet,
     'invoice_notes': InvoiceNoteViewSet,
+    'invoice_history': InvoiceHistoryViewSet,
 }
 
 for router_key in router_viewsets.keys():
@@ -62,6 +64,7 @@ urlpatterns = [
     path('invoice_templates/', invoice_templates, name='invoice_templates'),
     path('invoice_template/<uuid:record_id>', invoice_template, name='invoice_template'),
 
+    path('invoice/history/', invoice_history, name='invoice_history'),
     path('invoice/tracker/', track_email, name='track_email'),
     path('invoice/as_pdf/<uuid:record_id>/', as_pdf, name='invoice_as_pdf'),
     path('invoice_template/live_preview/<uuid:record_id>/', live_preview, name='live_preview'),

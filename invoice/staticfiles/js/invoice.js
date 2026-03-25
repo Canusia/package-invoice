@@ -71,7 +71,6 @@ $('form.frm_ajax').submit(function(event) {
             $(blocked_element).unblock();
         },
         success: function(response) {
-            alert('2')            
             swal({
                 title: 'Success',
                 text: response.message,
@@ -279,6 +278,69 @@ jQuery(document).ready(function($) {
 
 
 jQuery(document).ready(function($) {
+
+    function initHistoryTable() {
+        if (tbl_record_history) return;
+
+        tbl_record_history = $('#record_history').DataTable({
+            ajax: { url: historyURL, dataSrc: 'data' },
+            processing: true,
+            order: [[0, 'desc']],
+            searching: false,
+            language: { 'loadingRecords': '&nbsp;' },
+            dom: '<"float-left mt-3 mb-3"l><"row clear">rt<"row"<"col-6"i><"col-6 float-right"p>>',
+            'lengthMenu': [10, 30, 50],
+            columns: [
+                { data: 'history_date', name: 'history_date' },
+                { data: 'changed_by', name: 'changed_by', orderable: false },
+                {
+                    data: 'history_type_display',
+                    name: 'history_type_display',
+                    orderable: false,
+                    render: function(data) {
+                        if (data === 'Created') {
+                            return '<span class="badge badge-success">Created</span>';
+                        } else if (data === 'Changed') {
+                            return '<span class="badge badge-warning">Changed</span>';
+                        } else if (data === 'Deleted') {
+                            return '<span class="badge badge-danger">Deleted</span>';
+                        }
+                        return data;
+                    }
+                },
+                {
+                    data: 'changes',
+                    orderable: false,
+                    render: function(data) {
+                        if (!data || data.length === 0) {
+                            return '<em class="text-muted">—</em>';
+                        }
+                        var fields = data.map(function(c) {
+                            return '<code style="font-size:0.85em;">' + $('<span>').text(c.field).html() + '</code>';
+                        }).join(' ');
+                        return '<span class="history-changes-preview" style="cursor:pointer;" title="Click for details">' + fields + '</span>';
+                    }
+                }
+            ]
+        });
+
+        $(document).on('click', '#record_history tbody .history-changes-preview', function() {
+            var row = tbl_record_history.row($(this).closest('tr')).data();
+            if (!row || !row.changes.length) return;
+            var lines = row.changes.map(function(c) {
+                return c.field + ':\n  ' + (c.old || '(empty)') + '  →  ' + (c.new || '(empty)');
+            }).join('\n\n');
+            swal({ title: 'Changes', text: lines });
+        });
+    }
+
+    if (window.location.hash === '#history') {
+        initHistoryTable();
+    }
+
+    $(document).on('shown.bs.tab', 'a[href="#history"]', function() {
+        initHistoryTable();
+    });
 
     tbl_record_notes = $('#record_notes').DataTable({
         dom: 'B<"float-left mt-3 mb-3"l><"float-right mt-3"f><"row clear">rt<"row"<"col-6"i><"col-6 float-right"p>>',

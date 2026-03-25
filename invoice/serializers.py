@@ -49,6 +49,25 @@ class InvoiceTemplateSerializer(serializers.ModelSerializer):
             'ce_url',
         ]
 
+class HistoricalInvoiceSerializer(serializers.ModelSerializer):
+    history_date = serializers.DateTimeField(format='%m/%d/%Y %I:%M %p')
+    history_type_display = serializers.SerializerMethodField()
+    changed_by = serializers.SerializerMethodField()
+
+    def get_history_type_display(self, obj):
+        return {'+': 'Created', '~': 'Changed', '-': 'Deleted'}.get(obj.history_type, obj.history_type)
+
+    def get_changed_by(self, obj):
+        if obj.history_user:
+            return f'{obj.history_user.first_name} {obj.history_user.last_name}'
+        return 'System'
+
+    class Meta:
+        model = Invoice.history.model
+        fields = ['history_id', 'history_date', 'history_type_display', 'changed_by', 'status', 'number', 'total_amount']
+        datatables_always_serialize = ['history_id']
+
+
 class InvoiceSerializer(serializers.ModelSerializer):
     # invoice_item = InvoiceItemSerializer()
     term = TermSerializer()
@@ -59,7 +78,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
     due_date = serializers.DateField(
         format='%m/%d/%Y'
     )
-    
+
+    status_changed_on = serializers.DateTimeField(
+        format='%m/%d/%Y',
+        allow_null=True
+    )
+
     formatted_amount = serializers.CharField()
     billing_contact = serializers.CharField()
     
@@ -69,5 +93,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
         datatables_always_serialize = [
             'ce_url',
-            'billing_contact'
+            'billing_contact',
+            'status_changed_on',
         ]

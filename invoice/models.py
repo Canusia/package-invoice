@@ -19,6 +19,7 @@ from django.template.loader import get_template, render_to_string
 
 from mailer import send_mail, send_html_mail
 from model_utils import FieldTracker
+from simple_history.models import HistoricalRecords
 
 from cis.settings.pd_event import pd_event
 from cis.utils import export_to_excel, event_file_upload_path, getDomain
@@ -95,7 +96,14 @@ class Invoice(models.Model):
         default='Draft'
     )
 
+    status_changed_on = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Status Changed On'
+    )
+
     tracker = FieldTracker(fields=['status'])
+    history = HistoricalRecords()
 
     total_amount = models.FloatField(
         default=0.0,
@@ -350,27 +358,6 @@ class Invoice(models.Model):
         self.total_amount = total.get('total')
         self.save()
         
-    def add_note(self, createdby=None, note='', meta=None):
-
-        if not createdby:
-            createdby = CustomUser.objects.get(
-                username='cron'
-            )
-
-        note = InvoiceNote(
-            createdby=createdby,
-            note=note,
-            invoice=self
-        )
-
-        if not meta:
-            meta = {'type': 'private'}
-
-        note.meta = meta
-        note.save()
-
-        return note
-    
     def clone(self):
         # Clone the invoice
         cloned_invoice = Invoice.objects.create(

@@ -355,89 +355,53 @@ class EventInvoiceForm(forms.Form):
         self.helper.form_method = 'POST'
 
     def save(self, request, commit=True):
+        from collections import defaultdict
+
         data = self.cleaned_data
 
-        term = data.get('term')
-        events = data.get('event')
+        highschools = defaultdict(lambda: defaultdict(list))
+        for event in data.get('event'):
+            for attendee in event.marked_as_attended:
+                th = attendee.course_certificate.teacher_highschool
+                hs = th.highschool
 
-        highschools = {}
-        for event in events:
-            
-            attendees = event.marked_as_attended
-
-            for attendee in attendees:
-                if data.get('highschool') and data.get('highschool').id != attendee.course_certificate.teacher_highschool.highschool.id:
+                if data.get('highschool') and data.get('highschool').id != hs.id:
                     continue
-                
-                if not highschools.get(attendee.course_certificate.teacher_highschool.highschool.id):
-                    highschools[attendee.course_certificate.teacher_highschool.highschool.id] = {
-                        "events": {}
-                    }
 
-                if not highschools.get(
-                    attendee.course_certificate.teacher_highschool.highschool.id
-                )['events'].get(event.id):
-                    highschools[
-                        attendee.course_certificate.teacher_highschool.highschool.id
-                    ]['events'][event.id] = {
-                        'teachers': []
-                    }
-
-                highschools[attendee.course_certificate.teacher_highschool.highschool.id]['events'][event.id]['teachers'].append(
-                    f"{event.event_type.name} / {attendee.course_certificate.course.title} / {attendee.course_certificate.teacher_highschool.teacher.user.first_name} {attendee.course_certificate.teacher_highschool.teacher.user.last_name}"
+                highschools[hs.id][event.id].append(
+                    f"{event.event_type.name} / {attendee.course_certificate.course.title} / {th.teacher.user.first_name} {th.teacher.user.last_name}"
                 )
-                # print(f"{attendee.course_certificate.teacher_highschool.teacher.user.last_name}")
-             
+
         for hsid, pd_events in highschools.items():
-        
-            description = Template(data.get('description'))
             highschool = HighSchool.objects.get(pk=hsid)
+            description = Template(data.get('description')).render(Context({'highschool_name': highschool.name}))
 
-            context = Context({
-                'highschool_name': highschool.name
-                # 'event_type': event.event_type.name,
-                # 'event_term': event.term.label,
-                # 'event_date': event.start_time.strftime('%m/%d/%Y'),
-                # 'event_course': event.sexy_courses
-            })
-
-            description = description.render(context)
-
-            invoice = Invoice()
-            invoice.due_date = data.get('due_date')
-            invoice.created_by = request.user
-            invoice.description = description
-            invoice.status = 'Draft'
-
-            invoice.template = data.get('invoice_template')
-
-            invoice.term = data.get('term')
-            invoice.highschool = highschool
-            invoice.number = data.get('invoice_number') + highschool.code
-
-            invoice.meta = {}
-            invoice.meta['billing_contact_id'] = str(data.get('billing_contact').id)
-            invoice.meta['alt_billing_contact_id'] = str(data.get('alt_billing_contact').id)
-
+            invoice = Invoice(
+                due_date=data.get('due_date'),
+                created_by=request.user,
+                description=description,
+                status='Draft',
+                template=data.get('invoice_template'),
+                term=data.get('term'),
+                highschool=highschool,
+                number=data.get('invoice_number') + highschool.code,
+                meta={
+                    'billing_contact_id': str(data.get('billing_contact').id),
+                    'alt_billing_contact_id': str(data.get('alt_billing_contact').id),
+                }
+            )
             invoice.save()
 
-            for event_id, teachers in pd_events['events'].items():
+            for event_id, teachers in pd_events.items():
                 event = Event.objects.get(pk=event_id)
 
-                for teacher in teachers['teachers']:
-                    item = InvoiceItem(
-                        invoice=invoice
-                    )
-                    
-                    if data.get('cost_per_attendee'):
-                        item.amount = data.get('cost_per_attendee')
-                    else:
-                        item.amount = event.cost_per_attendee if event.cost_per_attendee else 1000
-
-                    item.description = teacher
-                    item.created_by = request.user
-                    
-                    item.save()
+                for teacher in teachers:
+                    InvoiceItem(
+                        invoice=invoice,
+                        amount=data.get('cost_per_attendee') or event.cost_per_attendee or 1000,
+                        description=teacher,
+                        created_by=request.user,
+                    ).save()
 
         return
 
@@ -914,231 +878,128 @@ class RegistrationsInvoiceForm(forms.Form):
             pass
 
     def save(self, request, commit=True):
+        from collections import defaultdict
         from cis.models.section import StudentRegistration
 
         data = self.cleaned_data
+        by_student = data.get('line_item_grouping') == 'by_student'
 
-        # get all the registrations for the selected class section terms
         registrations = StudentRegistration.objects.filter(
             class_section__term__in=data.get('class_section_terms'),
             status__in=data.get('registration_status')
         )
 
         if data.get('pay_type'):
-            registrations = registrations.filter(
-                pay_type__in=data.get('pay_type')
-            )
+            registrations = registrations.filter(pay_type__in=data.get('pay_type'))
 
-        # filter by courses if selected
         if data.get('courses'):
-            registrations = registrations.filter(
-                class_section__course__in=data.get('courses')
-            )
+            registrations = registrations.filter(class_section__course__in=data.get('courses'))
 
-        # filter by high schools if selected
         if data.get('highschools'):
-            registrations = registrations.filter(
-                class_section__highschool__in=data.get('highschools')
-            )
-        
-        if data.get('line_item_grouping') == 'by_student':
+            registrations = registrations.filter(class_section__highschool__in=data.get('highschools'))
+
+        if by_student:
             registrations = registrations.order_by(
                 'student__user__last_name', 'student__user__first_name', 'class_section__term__code', 'class_section__course__name'
             )
         else:
             registrations = registrations.order_by(
-                'class_section__term__code',  'class_section__course__name', 'student__user__last_name', 'student__user__first_name'
+                'class_section__term__code', 'class_section__course__name', 'student__user__last_name', 'student__user__first_name'
             )
 
-        highschools = {}
+        highschools = defaultdict(list)
         for record in registrations:
-            if data.get('bill_to') == 'student_highschool':
-                if not highschools.get(record.student.highschool.id):
-                    highschools[record.student.highschool.id] = []
+            hs = record.student.highschool if data.get('bill_to') == 'student_highschool' else record.class_section.highschool
+            highschools[hs.id].append(record)
 
-                highschools[record.student.highschool.id].append(record)
-            else:
-                if not highschools.get(record.class_section.highschool.id):
-                    highschools[record.class_section.highschool.id] = []
-
-                highschools[record.class_section.highschool.id].append(record)
-        
         for hsid, records in highschools.items():
-        
-            description = Template(data.get('description'))
             highschool = HighSchool.objects.get(pk=hsid)
+            description = Template(data.get('description')).render(Context({'highschool_name': highschool.name}))
 
-            context = Context({
-                'highschool_name': highschool.name
-            })
-
-            description = description.render(context)
-
-            invoice = Invoice()
-            invoice.due_date = data.get('due_date')
-            invoice.created_by = request.user
-            invoice.description = description
-            invoice.status = 'Draft'
-
-            invoice.template = data.get('invoice_template')
-
-            invoice.term = data.get('term')
-            invoice.highschool = highschool
-            invoice.number = data.get('invoice_number') + highschool.code
-
-            invoice.meta = {}
-            invoice.meta['billing_contact_id'] = str(data.get('billing_contact').id)
-            invoice.meta['alt_billing_contact_id'] = str(data.get('alt_billing_contact').id)
-
+            invoice = Invoice(
+                due_date=data.get('due_date'),
+                created_by=request.user,
+                description=description,
+                status='Draft',
+                template=data.get('invoice_template'),
+                term=data.get('term'),
+                highschool=highschool,
+                number=data.get('invoice_number') + highschool.code,
+                meta={
+                    'billing_contact_id': str(data.get('billing_contact').id),
+                    'alt_billing_contact_id': str(data.get('alt_billing_contact').id),
+                }
+            )
             invoice.save()
 
             weight = 1
-            current_item = previous_item = ''
+            previous_item = ''
             total_amount = total_number = 0
+            count_label = 'classes' if by_student else 'students'
+
             for record in records:
-                item = InvoiceItem(
-                    invoice=invoice,
-                    meta={
-                        'padding': 'true'
-                    }
-                )
+                item = InvoiceItem(invoice=invoice, meta={'padding': 'true'})
 
                 if data.get('cost_model') == 'cost_per_credit':
                     item.amount = record.class_section.course.credit_hours * record.class_section.term.academic_year.cost_per_credit
                 elif data.get('cost_model') == 'cost_per_section':
-                    try:
-                        item.amount = record.class_section.cost
-                    except AttributeError:
-                        item.amount = record.billed_school_cost
+                    item.amount = getattr(record.class_section, 'cost', None) or getattr(record, 'billed_school_cost', None)
 
                 if data.get('pay_type') and record.pay_type == 'school_partial' and record.pay_type in data.get('pay_type'):
-                    # get only the amount that the high school is responsible for
-                    try:
-                        item.amount = record.billed_school_cost
-                    except AttributeError:
-                        item.amount = '999'
+                    item.amount = getattr(record, 'billed_school_cost', None)
 
-                if data.get('line_item_grouping') == 'by_student':
+                if by_student:
                     current_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
-
-                    if current_item != previous_item:
-                        if previous_item != '':
-                            header_item = InvoiceItem(
-                                invoice=invoice,
-                                amount=None,
-                                created_by = request.user,
-                                description=f'Sub Total ${total_amount:,.2f}',
-                                weight=weight,
-                                meta={
-                                    'summary': 'true',
-                                    'col1': f'Sub Total',
-                                    'col2': f"${total_amount:.2f}",
-                                }
-                            )
-                            header_item.save()
-                            weight += 1
-
-                            total_number = 0
-                            total_amount = 0
-
-                        header_item = InvoiceItem(
-                            invoice=invoice,
-                            amount=None,
-                            created_by = request.user,
-                            description=current_item,
-                            weight=weight
-                        )
-                        header_item.save()
-                        weight += 1
-
                     item.description = f'{record.class_section.term}, {record.class_section.course.title}'
-                    previous_item = f'{record.student.user.last_name}, {record.student.user.first_name}'
-
-                    total_number += 1
-                    total_amount += float(item.amount)
                 else:
-                    try:
-                        current_item = record.class_section.invoice_description
-                    except:
-                        current_item = f'{record.class_section.term}, {record.class_section.course.title}'
-
-                    if current_item != previous_item:
-                        if previous_item != '':
-                            header_item = InvoiceItem(
-                                invoice=invoice,
-                                amount=None,
-                                created_by = request.user,
-                                description=f'Sub Total ${total_amount:,.2f}',
-                                weight=weight,
-                                meta={
-                                    'summary': 'true',
-                                    'col1': f'Sub Total',
-                                    'col2': f"${total_amount:,.2f}",
-                                }
-                            )
-                            header_item.save()
-                            weight += 1
-
-                            total_number = 0
-                            total_amount = 0
-
-                        header_item = InvoiceItem(
-                            invoice=invoice,
-                            amount=None,
-                            created_by = request.user,
-                            description=current_item,
-                            weight=weight
-                        )
-                        header_item.save()
-                        weight += 1
-
-
+                    current_item = getattr(record.class_section, 'invoice_description', None) or f'{record.class_section.term}, {record.class_section.course.title}'
                     item.description = f'{record.student.user.last_name}, {record.student.user.first_name}'
 
+                if current_item != previous_item:
+                    if previous_item != '':
+                        InvoiceItem(
+                            invoice=invoice,
+                            amount=None,
+                            created_by=request.user,
+                            description=f'Sub Total ${total_amount:,.2f}',
+                            weight=weight,
+                            meta={'summary': 'true', 'col1': 'Sub Total', 'col2': f'${total_amount:,.2f}'}
+                        ).save()
+                        weight += 1
+                        total_number = 0
+                        total_amount = 0
 
-                    try:
-                        previous_item = record.class_section.invoice_description
-                    except:
-                        previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
-                    # previous_item = f'{record.class_section.term}, {record.class_section.course.title}'
+                    InvoiceItem(
+                        invoice=invoice,
+                        amount=None,
+                        created_by=request.user,
+                        description=current_item,
+                        weight=weight
+                    ).save()
+                    weight += 1
 
-                    total_number += 1
+                previous_item = current_item
+                total_number += 1
+                if item.amount:
                     total_amount += float(item.amount)
 
                 item.created_by = request.user
                 item.weight = weight
                 item.save()
-
                 weight += 1
 
-            if data.get('line_item_grouping') == 'by_student':
-                header_item = InvoiceItem(
-                    invoice=invoice,
-                    amount=None,
-                    created_by = request.user,
-                    description=f'Total for {previous_item} - {total_number} classes ${total_amount:,.2f}',
-                    weight=weight,
-                    meta={
-                        'summary': 'true',
-                        'col1': f'Total for {previous_item} - {total_number} classes',
-                        'col2': f"${total_amount:,.2f}",
-                    }
-                )
-                header_item.save()
-            else:
-                header_item = InvoiceItem(
-                    invoice=invoice,
-                    amount=None,
-                    created_by = request.user,
-                    description=f'Total for {previous_item} - {total_number} students ${total_amount:,.2f}',
-                    weight=weight,
-                    meta={
-                        'summary': 'true',
-                        'col1': f'Total for {previous_item} - {total_number} students',
-                        'col2': f"${total_amount:,.2f}",
-                    }
-                )
-                header_item.save()
+            InvoiceItem(
+                invoice=invoice,
+                amount=None,
+                created_by=request.user,
+                description=f'Total for {previous_item} - {total_number} {count_label} ${total_amount:,.2f}',
+                weight=weight,
+                meta={
+                    'summary': 'true',
+                    'col1': f'Total for {previous_item} - {total_number} {count_label}',
+                    'col2': f'${total_amount:,.2f}',
+                }
+            ).save()
         return
 
 class InvoiceTemplateForm(forms.ModelForm):

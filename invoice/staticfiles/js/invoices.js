@@ -283,7 +283,15 @@ $(document).ready(function () {
                             return row.highschool.name + "<br>" + row.billing_contact
                     },
                 },
-                null,
+                {
+                    'render': function (data, type, row, meta) {
+                        var out = data || '';
+                        if (row.status_changed_on) {
+                            out += '<br><small class="text-muted">Changed On: ' + row.status_changed_on + '</small>';
+                        }
+                        return out;
+                    }
+                },
                 null,
                 {
                     'searchable': false,

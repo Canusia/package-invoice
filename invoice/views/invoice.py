@@ -46,7 +46,7 @@ from ..forms.invoice import (
 from ..models import Invoice, InvoiceItem, InvoiceTemplate, InvoiceNote
 from ..serializers import (
     InvoiceItemSerializer, InvoiceSerializer, InvoiceTemplateSerializer,
-    InvoiceNoteSerializer
+    InvoiceNoteSerializer, HistoricalInvoiceSerializer
 )
 
 from cis.menu import cis_menu, draw_menu, FACULTY_MENU
@@ -70,6 +70,22 @@ class InvoiceNoteViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         return records
+
+class InvoiceHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = HistoricalInvoiceSerializer
+    permission_classes = [CIS_user_only]
+
+    def get_queryset(self):
+        invoice_id = self.request.GET.get('invoice_id')
+        if not invoice_id:
+            return Invoice.history.model.objects.none()
+        return (
+            Invoice.history.model.objects
+            .filter(id=invoice_id)
+            .select_related('history_user')
+            .order_by('-history_date')
+        )
+
 
 class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InvoiceSerializer
@@ -112,6 +128,49 @@ class InvoiceTemplateViewSet(viewsets.ReadOnlyModelViewSet):
         records = InvoiceTemplate.objects.all()
 
         return records
+
+HISTORY_EXCLUDED_FIELDS = {
+    'history_id', 'history_date', 'history_type', 'history_user_id',
+    'history_change_reason', 'id', 'created_on', 'status_changed_on',
+}
+
+def invoice_history(request):
+    invoice_id = request.GET.get('invoice_id')
+    if not invoice_id:
+        return JsonResponse({'data': []})
+
+    history = list(
+        Invoice.history.model.objects
+        .filter(id=invoice_id)
+        .select_related('history_user')
+        .order_by('-history_date')
+    )
+
+    type_map = {'+': 'Created', '~': 'Changed', '-': 'Deleted'}
+    data = []
+    for i, h in enumerate(history):
+        prev = history[i + 1] if i + 1 < len(history) else None
+
+        changes = []
+        if prev:
+            delta = h.diff_against(prev)
+            for change in delta.changes:
+                if change.field not in HISTORY_EXCLUDED_FIELDS:
+                    changes.append({
+                        'field': change.field,
+                        'old': str(change.old) if change.old is not None else '',
+                        'new': str(change.new) if change.new is not None else '',
+                    })
+
+        data.append({
+            'history_date': h.history_date.strftime('%m/%d/%Y %I:%M %p'),
+            'changed_by': f'{h.history_user.first_name} {h.history_user.last_name}' if h.history_user else 'System',
+            'history_type_display': type_map.get(h.history_type, h.history_type),
+            'changes': changes,
+        })
+
+    return JsonResponse({'data': data})
+
 
 @xframe_options_exempt
 def detail(request, record_id):
@@ -164,6 +223,7 @@ def detail(request, record_id):
 
             'api_url': mark_safe(f'/ce/invoices/api/invoice_items?format=datatables&invoice={record.id}'),
             'notes_api_url': mark_safe(f'/ce/invoices/api/invoice_notes?format=datatables&invoice_id={record.id}'),
+            'history_api_url': mark_safe(f'/ce/invoices/invoice/history/?invoice_id={record.id}'),
             'urls': urls,
             'read_only': read_only,
             'menu': menu,
@@ -216,8 +276,11 @@ def clone(request, record_id):
 def delete_line_item(request, record_id):
     record = get_object_or_404(InvoiceItem, pk=record_id)
 
-    try:        
+    try:
+        invoice = record.invoice
+        note_text = f'Line item deleted: <strong>{record.description}</strong> — ${record.amount:,.2f}'
         record.delete()
+        invoice.add_note(request.user, note_text)
 
         data = {
             'status':'success',
@@ -280,12 +343,12 @@ def edit_line_item(request):
 
         if form.is_valid():
             record = form.save(line_item)
+            record.invoice.add_note(request.user, f'Line item updated: <strong>{record.description}</strong> — ${record.amount:,.2f}')
 
             data = {
                 'status':'success',
                 'message':'Successfully updated record',
                 'action': 'reload_table'
-                # 'action': 'refresh_invoice_line_item'
             }
             return JsonResponse(data)
         else:
@@ -409,7 +472,8 @@ def add_new_item(request):
         form = AddLineItemForm(invoice, 'add_new_item', data=request.POST)
 
         if form.is_valid():
-            record = form.save(invoice,request)
+            record = form.save(invoice, request)
+            invoice.add_note(request.user, f'Line item added: <strong>{record.description}</strong> — ${record.amount:,.2f}')
 
             data = {
                 'status':'success',
