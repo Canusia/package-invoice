@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('cis', '0027_customuser_last_updated_on_student_last_updated_on_and_more'),
+        # ('cis', '0027_customuser_last_updated_on_student_last_updated_on_and_more'),
         ('invoice', '0002_alter_invoiceitem_options_invoiceitem_weight'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
