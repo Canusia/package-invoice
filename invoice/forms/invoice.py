@@ -412,7 +412,7 @@ class EventInvoiceForm(forms.Form):
 
             invoice.term = data.get('term')
             invoice.highschool = highschool
-            invoice.number = data.get('invoice_number') + highschool.code
+            invoice.number = data.get('invoice_number') + highschool.state_code
 
             invoice.meta = {}
             invoice.meta['billing_contact_id'] = str(data.get('billing_contact').id)
@@ -633,7 +633,7 @@ class ApplyDEInvoiceForm(forms.Form):
 
             invoice.term = data.get('term')
             invoice.highschool = highschool
-            invoice.number = data.get('invoice_number') + highschool.code
+            invoice.number = data.get('invoice_number') + highschool.state_code
 
             invoice.meta = {}
             invoice.meta['billing_contact_id'] = str(data.get('billing_contact').id)
