@@ -41,7 +41,7 @@ for router_key in router_viewsets.keys():
     router.register(
         router_key,
         router_viewsets[router_key],
-        basename=app_name
+        basename=f"{app_name}_{router_key}"
     )
 
 from django.views.i18n import JavaScriptCatalog
