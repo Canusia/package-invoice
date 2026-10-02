@@ -26,6 +26,7 @@ from django_ckeditor_5.widgets import CKEditor5Widget as CKEditorWidget
 from cis.models.customuser import CustomUser
 
 from cis.models.term import Term
+from cis.highschool_scope import picker_queryset
 from cis.models.highschool import HighSchool
 from cis.models.highschool_administrator import HSPosition
 
@@ -294,7 +295,7 @@ class EventInvoiceForm(forms.Form):
     )
 
     highschool = forms.ModelChoiceField(
-        queryset=HighSchool.objects.all(),
+        queryset=HighSchool.objects.none(),  # set per request in __init__
         required=False,
         label='High School',
         help_text='If you need to generate invoice for a single high school'
@@ -340,6 +341,7 @@ class EventInvoiceForm(forms.Form):
     def __init__(self, request, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.fields['highschool'].queryset = picker_queryset()
         self.fields['term'].queryset = Term.objects.all().order_by('-code')
         self.fields['event'].queryset = Event.objects.all().order_by('-term__code', '-start_time')
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
@@ -528,7 +530,7 @@ class ApplyDEInvoiceForm(forms.Form):
         terms = Term.objects.all().order_by('-code')
         self.fields['term'].queryset = terms
         # self.fields['courses'].queryset = Course.objects.all().order_by('name')
-        # self.fields['highschools'].queryset = HighSchool.objects.all().order_by('name')
+        # self.fields['highschools'].queryset = picker_queryset()
 
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
         self.fields['alt_billing_contact'].queryset = HSPosition.objects.all().order_by('name')
@@ -857,7 +859,7 @@ class RegistrationsInvoiceForm(forms.Form):
         self.fields['term'].queryset = terms
         self.fields['class_section_terms'].queryset = terms
         self.fields['courses'].queryset = Course.objects.all().order_by('name')
-        self.fields['highschools'].queryset = HighSchool.objects.all().order_by('name')
+        self.fields['highschools'].queryset = picker_queryset()
 
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
         self.fields['alt_billing_contact'].queryset = HSPosition.objects.all().order_by('name')
@@ -1181,6 +1183,9 @@ class InvoiceForm(forms.ModelForm):
         self.fields['description'].required = False
 
         instance = kwargs.get('instance')
+        # Campus schools, plus the school this invoice is already billed to.
+        self.fields['highschool'].queryset = picker_queryset(
+            keep=instance.highschool_id)
         self.fields['due_date'].initial = instance.due_date.strftime('%m/%d/%Y')
 
         self.fields['billing_contact'].queryset = HSPosition.objects.all().order_by('name')
